@@ -27,6 +27,18 @@
       --accent-glow: rgba(13, 110, 253, 0.15);
     }
 
+    .dots-pulse .dot {
+      animation: dotPulse 1.4s infinite;
+      opacity: 0.2;
+    }
+    .dots-pulse .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dots-pulse .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotPulse {
+      0% { opacity: 0.2; }
+      50% { opacity: 1; }
+      100% { opacity: 0.2; }
+    }
+
     body {
       background-color: var(--bg-dark);
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -88,26 +100,28 @@
 
     /* Massive Input Group Styling */
     .ask-input-group .form-control {
-      background: rgba(20, 20, 20, 0.8) !important;
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(24, 24, 30, 0.95) !important;
+      border: 1px solid rgba(255, 255, 255, 0.2);
       color: #fff;
-      font-size: 1rem;
-      padding: 0.85rem 1.25rem;
-      border-radius: 14px 0 0 14px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      font-size: 1.05rem;
+      padding: 1rem 1.4rem;
+      border-radius: 16px 0 0 16px;
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.5);
+      min-height: 56px;
     }
 
     .ask-input-group .form-control:focus {
-      border-color: #0d6efd;
-      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 0.3rem rgba(59, 130, 246, 0.3);
     }
 
     .ask-input-group .btn-ask {
-      border-radius: 0 14px 14px 0;
-      padding: 0 1.75rem;
+      border-radius: 0 16px 16px 0;
+      padding: 0 2.2rem;
       font-weight: 600;
-      font-size: 1rem;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      font-size: 1.05rem;
+      box-shadow: 0 6px 25px rgba(0, 0, 0, 0.5);
+      min-height: 56px;
     }
 
     /* Accordion Dark Tweaks */
@@ -395,13 +409,27 @@
         </div>
 
         <!-- RECENT DUMPS IN VAULT LIST -->
-        <div class="d-flex align-items-center justify-content-between mb-2 px-1">
-          <span class="text-uppercase text-secondary fw-bold" style="font-size: 0.75rem; letter-spacing: 0.05em;">
-            <i class="fa-solid fa-database me-1"></i>Recent Dumps in Vault
-          </span>
-          <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-secondary bg-opacity-25 text-secondary rounded-pill" id="dumpsTotalBadge">Loading...</span>
-            <button class="btn btn-sm btn-link text-secondary p-0" onclick="loadRecentDumps()" title="Refresh"><i class="fa-solid fa-rotate-right"></i></button>
+        <div class="d-flex flex-column gap-2 mb-2 px-1">
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="text-uppercase text-secondary fw-bold" style="font-size: 0.75rem; letter-spacing: 0.05em;">
+              <i class="fa-solid fa-database me-1"></i>Recent Dumps in Vault
+            </span>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-secondary bg-opacity-25 text-secondary rounded-pill" id="dumpsTotalBadge">Loading...</span>
+              <button class="btn btn-sm btn-link text-secondary p-0" onclick="loadRecentDumps()" title="Refresh"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+          </div>
+          <!-- Selection Toolbar -->
+          <div class="d-flex align-items-center justify-content-between py-1 px-2 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25">
+            <div class="form-check mb-0">
+              <input class="form-check-input cursor-pointer" type="checkbox" id="selectAllDumps" onchange="toggleSelectAllDumps(this)">
+              <label class="form-check-label text-secondary small select-none cursor-pointer" for="selectAllDumps" style="font-size: 0.78rem;">
+                Select All
+              </label>
+            </div>
+            <button class="btn btn-outline-danger btn-sm py-0 px-2 rounded-pill font-monospace" id="btnDeleteSelected" style="font-size: 0.75rem; display: none;" onclick="deleteSelectedDumps()">
+              <i class="fa-solid fa-trash-can me-1"></i>Delete (<span id="selectedCount">0</span>)
+            </button>
           </div>
         </div>
 
@@ -423,7 +451,10 @@
             </span>
           </div>
           <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="resetBtn" title="Clear Chat">
+            <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="clearAllChatHistory()" title="Clear Chat History">
+              <i class="fa-solid fa-trash-can me-1"></i> Clear History
+            </button>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="resetBtn" title="Reset View">
               <i class="fa-solid fa-rotate-left me-1"></i> Reset
             </button>
           </div>
@@ -449,6 +480,40 @@
         <!-- Pinned Search Input Group at Bottom -->
         <footer class="p-3 border-top border-secondary border-opacity-25 glass-card rounded-0">
           <div class="container-fluid p-0">
+            
+            <!-- Instant Mode & Provider Selector -->
+            <div class="d-flex align-items-center justify-content-between mb-2 px-1 flex-wrap gap-2">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <!-- Mode Selector -->
+                <div class="btn-group btn-group-sm" role="group" id="modeSelectorGroup">
+                  <button type="button" class="btn btn-outline-primary active rounded-pill me-1 px-3" data-mode="fast" id="btnModeFast">
+                    <i class="fa-solid fa-bolt me-1"></i>⚡ Fast
+                  </button>
+                  <button type="button" class="btn btn-outline-primary rounded-pill me-1 px-3" data-mode="detailed" id="btnModeDetailed">
+                    <i class="fa-solid fa-book-open me-1"></i>📖 Detailed
+                  </button>
+                  <button type="button" class="btn btn-outline-primary rounded-pill px-3" data-mode="thinking" id="btnModeThinking">
+                    <i class="fa-solid fa-brain me-1"></i>🧠 Deep Thinking
+                  </button>
+                </div>
+
+                <!-- Provider Selector (Local vs Cloud) -->
+                <div class="btn-group btn-group-sm" role="group" id="providerSelectorGroup">
+                  <button type="button" class="btn btn-outline-success active rounded-pill me-1 px-2.5" data-provider="local" id="btnProviderLocal" title="Run locally via Ollama (Gemma 4)">
+                    <i class="fa-solid fa-house-laptop me-1"></i>🏠 Local (Ollama)
+                  </button>
+                  <button type="button" class="btn btn-outline-info rounded-pill px-2.5" data-provider="cloud" id="btnProviderCloud" title="Run via Cloud API (Gemini/OpenAI for fast recording)">
+                    <i class="fa-solid fa-cloud me-1"></i>☁️ Cloud API
+                  </button>
+                </div>
+              </div>
+
+              <small class="text-secondary font-monospace" style="font-size: 0.75rem;" id="modeHintText">
+                <i class="fa-solid fa-bolt text-warning me-1"></i>⚡ Fast direct response
+              </small>
+            </div>
+
+
             <form id="askForm" class="ask-input-group input-group">
               <span class="input-group-text bg-dark border-secondary border-opacity-25 text-secondary pe-0">
                 <i class="fa-solid fa-magnifying-glass fs-5"></i>
@@ -582,12 +647,20 @@
             itemsHtml += `
               <div class="list-group-item glass-card glass-card-hover border-0 p-2.5 rounded-3 text-light">
                 <div class="d-flex w-100 justify-content-between align-items-center mb-1">
-                  <h6 class="mb-0 text-white fw-semibold text-truncate" style="font-size: 0.88rem; max-width: 210px;" title="${dump.source_name}">
-                    ${dump.source_name}
-                  </h6>
-                  <span class="badge ${badgeStyle.bg} bg-opacity-25 text-light border border-white border-opacity-10 rounded-pill" style="font-size: 0.65rem;">
-                    ${badgeStyle.text}
-                  </span>
+                  <div class="d-flex align-items-center overflow-hidden me-1">
+                    <input type="checkbox" class="form-check-input dump-checkbox me-2 cursor-pointer flex-shrink-0" data-id="${dump.id}" onchange="updateSelectedCount()">
+                    <h6 class="mb-0 text-white fw-semibold text-truncate" style="font-size: 0.88rem; max-width: 170px;" title="${dump.source_name}">
+                      ${dump.source_name}
+                    </h6>
+                  </div>
+                  <div class="d-flex align-items-center gap-1">
+                    <span class="badge ${badgeStyle.bg} bg-opacity-25 text-light border border-white border-opacity-10 rounded-pill" style="font-size: 0.65rem;">
+                      ${badgeStyle.text}
+                    </span>
+                    <button class="btn btn-link text-danger p-0 ms-1 text-opacity-75 hover-opacity-100" onclick="deleteSingleDump(${dump.id}, '${dump.source_name}')" title="Delete Dump">
+                      <i class="fa-solid fa-trash-can" style="font-size: 0.8rem;"></i>
+                    </button>
+                  </div>
                 </div>
                 <div class="d-flex align-items-center justify-content-between mt-2">
                   <div class="d-flex flex-wrap gap-1 align-items-center">
@@ -602,9 +675,207 @@
           });
           itemsHtml += '</div>';
           recentDumpsContainer.innerHTML = itemsHtml;
+          window.updateSelectedCount();
         } catch(e) {
           console.error('Error loading dumps:', e);
           recentDumpsContainer.innerHTML = '<div class="text-center text-danger fs-7 py-3">Failed to load dumps.</div>';
+        }
+      };
+
+      // ── Vault Bulk & Single Deletion Helpers ──────────────────────────
+      window.updateSelectedCount = function() {
+        const checkboxes = document.querySelectorAll('.dump-checkbox:checked');
+        const count = checkboxes.length;
+        const btnDeleteSelected = document.getElementById('btnDeleteSelected');
+        const selectedCount = document.getElementById('selectedCount');
+        const selectAllDumps = document.getElementById('selectAllDumps');
+        const allCheckboxes = document.querySelectorAll('.dump-checkbox');
+
+        if (selectedCount) selectedCount.textContent = count;
+        if (btnDeleteSelected) btnDeleteSelected.style.display = count > 0 ? 'inline-block' : 'none';
+        if (selectAllDumps && allCheckboxes.length > 0) {
+          selectAllDumps.checked = (count === allCheckboxes.length);
+        }
+      };
+
+      window.toggleSelectAllDumps = function(master) {
+        const checkboxes = document.querySelectorAll('.dump-checkbox');
+        checkboxes.forEach(cb => cb.checked = master.checked);
+        window.updateSelectedCount();
+      };
+
+      window.deleteSingleDump = async function(dumpId, sourceName) {
+        if (!confirm(`Are you sure you want to delete '${sourceName}' from the vault?`)) return;
+        try {
+          const res = await fetch(`/api/dump/${dumpId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken }
+          });
+          const data = await res.json();
+          if (res.ok) {
+            showToast(`Deleted '${sourceName}' from vault.`);
+            loadRecentDumps();
+          } else {
+            showToast(data.error || 'Failed to delete dump', 'danger');
+          }
+        } catch(err) {
+          showToast('Network error deleting dump', 'danger');
+        }
+      };
+
+      window.deleteSelectedDumps = async function() {
+        const checked = Array.from(document.querySelectorAll('.dump-checkbox:checked'));
+        if (checked.length === 0) return;
+        const ids = checked.map(cb => parseInt(cb.getAttribute('data-id')));
+        if (!confirm(`Are you sure you want to delete ${ids.length} selected dump(s)?`)) return;
+
+        try {
+          const res = await fetch('/api/dumps/delete/bulk/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ ids: ids })
+          });
+          const data = await res.json();
+          if (res.ok) {
+            showToast(`Bulk deleted ${checked.length} dump(s).`);
+            const selectAll = document.getElementById('selectAllDumps');
+            if (selectAll) selectAll.checked = false;
+            loadRecentDumps();
+          } else {
+            showToast(data.error || 'Failed to delete selected dumps', 'danger');
+          }
+        } catch(err) {
+          showToast('Network error in bulk delete', 'danger');
+        }
+      };
+
+      // ── Chat History Helpers ─────────────────────────────────────────
+      window.loadChatHistory = async function() {
+        try {
+          const res = await fetch('/api/chat/history/');
+          const data = await res.json();
+          if (!data.messages || data.messages.length === 0) return;
+
+          if (resultsArea.querySelector('.fa-wand-magic-sparkles')) {
+            resultsArea.innerHTML = '';
+          }
+
+          data.messages.forEach(m => {
+            renderSavedChatMessage(m);
+          });
+          resultsArea.scrollTop = resultsArea.scrollHeight;
+        } catch(err) {
+          console.error('Error loading chat history:', err);
+        }
+      };
+
+      function renderSavedChatMessage(m) {
+        const userBubbleHtml = `
+          <div class="d-flex justify-content-end mb-3 msg-wrapper" data-msg-id="${m.id}">
+            <div class="bg-primary bg-gradient text-white px-4 py-3 rounded-4 shadow-sm border border-primary border-opacity-30" style="max-width: 85%; font-size: 1.02rem; line-height: 1.5;">
+              <div class="d-flex align-items-center gap-2 mb-1 opacity-75 small font-monospace" style="font-size: 0.75rem;">
+                <i class="fa-solid fa-user text-info"></i> You (LASU Student)
+              </div>
+              <div>${m.user_query.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+            </div>
+          </div>
+        `;
+        resultsArea.insertAdjacentHTML('beforeend', userBubbleHtml);
+
+        let sourcesHtml = '';
+        if (m.sources && m.sources.length > 0) {
+          const accId = 'acc_hist_' + m.id;
+          const sourceItems = m.sources.map((s, idx) => `
+            <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+              <div class="d-flex justify-content-between text-light mb-1" style="font-size: 0.83rem;">
+                <span>Source ${idx + 1}: ${s.source_name} ${s.page_number ? `(Page ${s.page_number})` : ''}</span>
+                <span class="text-secondary font-monospace" style="font-size: 0.75rem;">Score: ${s.score}</span>
+              </div>
+            </div>
+          `).join('');
+
+          sourcesHtml = `
+            <div class="accordion mt-3" id="${accId}">
+              <div class="accordion-item rounded-3 overflow-hidden bg-dark border border-secondary border-opacity-25">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed py-2 px-3 bg-dark text-light small" type="button" data-bs-toggle="collapse" data-bs-target="#col_${accId}">
+                    Citations & Sources (${m.sources.length})
+                  </button>
+                </h2>
+                <div id="col_${accId}" class="accordion-collapse collapse" data-bs-parent="#${accId}">
+                  <div class="accordion-body text-secondary small pt-3">
+                    <div class="list-group list-group-flush gap-2">
+                      ${sourceItems}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        const assistantBubbleHtml = `
+          <div class="d-flex flex-column align-items-start mb-4 w-100 msg-wrapper" data-msg-id="${m.id}">
+            <div class="card glass-card p-3 shadow-sm rounded-4 w-100 border-start border-primary border-3">
+              <div class="card-body p-1">
+                <div class="mb-2 text-light leading-relaxed" style="font-size: 0.95rem; white-space: pre-wrap;">${m.assistant_response}</div>
+                ${sourcesHtml}
+                <div class="d-flex justify-content-end align-items-center gap-2 mt-2">
+                  <span class="badge bg-dark bg-opacity-75 text-secondary border border-secondary border-opacity-25 font-monospace" style="font-size: 0.75rem;">${m.latency || '0.0s'}</span>
+                  <button class="btn btn-link text-danger p-0 ms-1" onclick="deleteChatMessage(${m.id}, this)" title="Delete Message">
+                    <i class="fa-solid fa-trash-can opacity-75 hover-opacity-100" style="font-size: 0.85rem;"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        resultsArea.insertAdjacentHTML('beforeend', assistantBubbleHtml);
+      }
+
+      window.deleteChatMessage = async function(msgId, btnElement) {
+        if (!confirm('Delete this message from history?')) return;
+        try {
+          const res = await fetch(`/api/chat/message/${msgId}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken }
+          });
+          if (res.ok) {
+            const wrappers = document.querySelectorAll(`.msg-wrapper[data-msg-id="${msgId}"]`);
+            wrappers.forEach(w => w.remove());
+            showToast('Message deleted from history.');
+          } else {
+            showToast('Failed to delete message', 'danger');
+          }
+        } catch(err) {
+          showToast('Network error deleting message', 'danger');
+        }
+      };
+
+      window.clearAllChatHistory = async function() {
+        if (!confirm('Are you sure you want to clear all conversation history?')) return;
+        try {
+          const res = await fetch('/api/chat/history/clear/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken }
+          });
+          if (res.ok) {
+            resultsArea.innerHTML = `
+              <div class="text-center text-secondary my-auto py-5">
+                <i class="fa-solid fa-wand-magic-sparkles fs-1 mb-3 text-primary opacity-50"></i>
+                <h5 class="text-white">Ready to Query Vault</h5>
+                <p class="small text-muted" style="max-width: 480px; margin: 0 auto;">Ask any campus question below. The engine searches retrieved dumps, verifies corroboration, and returns grounded answers with zero external data leaks.</p>
+              </div>
+            `;
+            showToast('Cleared all conversation history.');
+          } else {
+            showToast('Failed to clear history', 'danger');
+          }
+        } catch(err) {
+          showToast('Network error clearing history', 'danger');
         }
       };
 
@@ -761,158 +1032,242 @@
         }
       });
 
-      // Ask Engine Pipeline
-      askForm.addEventListener('submit', async (e) => {
+      // Mode & Provider Selector Logic
+      let currentMode = 'fast';
+      let currentProvider = 'local';
+
+      const modeButtons = document.querySelectorAll('#modeSelectorGroup button');
+      const providerButtons = document.querySelectorAll('#providerSelectorGroup button');
+      const modeHintText = document.getElementById('modeHintText');
+
+      const hints = {
+        fast: '<i class="fa-solid fa-bolt text-warning me-1"></i>⚡ Fast direct response',
+        detailed: '<i class="fa-solid fa-book-open text-primary me-1"></i>📖 Detailed paragraphs & bullet points',
+        thinking: '<i class="fa-solid fa-brain text-info me-1"></i>🧠 Deep Reasoning loop enabled'
+      };
+
+      modeButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          modeButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentMode = btn.getAttribute('data-mode');
+          modeHintText.innerHTML = hints[currentMode] || '';
+        });
+      });
+
+      providerButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          providerButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          currentProvider = btn.getAttribute('data-provider');
+        });
+      });
+
+      // Track active EventSource instance globally across queries
+      let activeEvtSource = null;
+      const askSubmitBtn = askForm.querySelector('button[type="submit"]');
+
+      function stopActiveStream() {
+        if (activeEvtSource) {
+          try {
+            activeEvtSource.close();
+          } catch(err) {}
+          activeEvtSource = null;
+        }
+        askInput.disabled = false;
+        askSubmitBtn.disabled = false;
+      }
+
+      // Ask Engine Pipeline - Streaming SSE & Separated Chat Bubbles
+      askForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const q = askInput.value.trim();
         if(!q) return;
 
+        // Close any existing active stream connection
+        stopActiveStream();
+
+        askInput.value = '';
+        askInput.disabled = true;
+        askSubmitBtn.disabled = true;
+
         const askLoader = document.getElementById('askLoader');
-        askLoader.style.display = 'flex';
+        if (askLoader) askLoader.style.display = 'none';
         
         // Clear placeholder on first search
         if(resultsArea.querySelector('.fa-wand-magic-sparkles')) {
           resultsArea.innerHTML = '';
-          resultsArea.appendChild(askLoader);
         }
 
-        try {
-          const res = await fetch(`/api/ask/?question=${encodeURIComponent(q)}`);
-          const data = await res.json();
-          
-          let cardHtml = '';
-          
-          if(data.status === 'grounded') {
-            let sourcesHtml = '';
-            if(data.sources && data.sources.length > 0) {
-              const accId = 'acc_' + Date.now();
-              const sourceItems = data.sources.map((s, idx) => `
-                <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
-                  <div class="d-flex justify-content-between fw-semibold text-light mb-1 style-sm" style="font-size: 0.85rem;">
-                    <span><i class="fa-solid fa-file-text text-primary me-1"></i> Source ${idx + 1}: ${s.source_name} ${s.page_number ? `(Page ${s.page_number})` : ''}</span>
-                    <span class="text-success font-monospace" style="font-size: 0.75rem;">Relevance: ${s.score} pts</span>
-                  </div>
-                </div>
-              `).join('');
+        // 1. Render User Question Bubble (Right Aligned)
+        const userBubbleHtml = `
+          <div class="d-flex justify-content-end mb-3">
+            <div class="bg-primary bg-gradient text-white px-4 py-3 rounded-4 shadow-sm border border-primary border-opacity-30" style="max-width: 85%; font-size: 1.02rem; line-height: 1.5;">
+              <div class="d-flex align-items-center gap-2 mb-1 opacity-75 small font-monospace" style="font-size: 0.75rem;">
+                <i class="fa-solid fa-user text-info"></i> You (LASU Student)
+              </div>
+              <div>${q.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+            </div>
+          </div>
+        `;
+        resultsArea.insertAdjacentHTML('beforeend', userBubbleHtml);
 
-              sourcesHtml = `
-                <div class="accordion mt-3" id="${accId}">
-                  <div class="accordion-item rounded-3 overflow-hidden">
-                    <h2 class="accordion-header">
-                      <button class="accordion-button collapsed py-2 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#col_${accId}">
-                        <i class="fa-solid fa-quote-left text-primary me-2"></i> View Grounded Sources (${data.sources.length})
-                      </button>
-                    </h2>
-                    <div id="col_${accId}" class="accordion-collapse collapse" data-bs-parent="#${accId}">
-                      <div class="accordion-body text-secondary small pt-3">
-                        <div class="list-group list-group-flush gap-2">
-                          ${sourceItems}
-                        </div>
+        // 2. Render Assistant Response Bubble Framework (Left Aligned)
+        const msgId = 'msg_' + Date.now();
+        const assistantBubbleHtml = `
+          <div class="d-flex flex-column align-items-start mb-4 w-100 msg-wrapper" id="${msgId}">
+            <div class="card glass-card p-3 shadow-sm rounded-4 w-100 border-start border-primary border-3">
+              <div class="card-body p-1">
+                
+                <!-- Loading State (3 dots loader + progress stages) -->
+                <div class="loading-state d-flex align-items-center gap-2 mb-2 text-info" style="font-size: 0.9rem;">
+                  <span class="spinner-grow spinner-grow-sm text-primary" role="status" style="width: 0.55rem; height: 0.55rem;"></span>
+                  <span class="stage-text fw-medium">Scanning vault</span>
+                  <span class="dots-pulse fw-bold"><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></span>
+                </div>
+
+                <!-- Collapsible Thought Process Box (Hidden by default) -->
+                <details class="mb-3 rounded-3 bg-dark bg-opacity-60 border border-secondary border-opacity-25 p-2.5 thinking-box" style="display: none;">
+                  <summary class="text-secondary small fw-semibold cursor-pointer select-none">
+                    Thought Process
+                  </summary>
+                  <div class="mt-2 text-secondary small font-monospace thinking-text" style="white-space: pre-wrap; font-size: 0.82rem;"></div>
+                </details>
+
+                <!-- Streaming Answer Box -->
+                <div class="mb-2 text-light leading-relaxed answer-text" style="font-size: 0.95rem; white-space: pre-wrap;"></div>
+
+                <!-- Grounded Sources Accordion Container (Rendered ONLY when complete) -->
+                <div class="sources-container"></div>
+
+                <!-- Latency Tag / Footer -->
+                <div class="d-flex justify-content-end align-items-center gap-2 mt-2 latency-footer" style="display: none;">
+                  <span class="badge bg-dark bg-opacity-75 text-secondary border border-secondary border-opacity-25 font-monospace latency-tag" style="font-size: 0.75rem;"></span>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        `;
+        resultsArea.insertAdjacentHTML('beforeend', assistantBubbleHtml);
+        resultsArea.scrollTop = resultsArea.scrollHeight;
+
+        const msgCard = document.getElementById(msgId);
+        const loadingState = msgCard.querySelector('.loading-state');
+        const stageText = msgCard.querySelector('.stage-text');
+        const thinkingBox = msgCard.querySelector('.thinking-box');
+        const thinkingText = msgCard.querySelector('.thinking-text');
+        const answerText = msgCard.querySelector('.answer-text');
+        const sourcesContainer = msgCard.querySelector('.sources-container');
+        const latencyFooter = msgCard.querySelector('.latency-footer');
+        const latencyTag = msgCard.querySelector('.latency-tag');
+
+        let latestMeta = null;
+
+        // Connect via EventSource for SSE streaming
+        const streamUrl = `/api/ask/stream/?question=${encodeURIComponent(q)}&mode=${encodeURIComponent(currentMode)}&provider=${encodeURIComponent(currentProvider)}`;
+        const evtSource = new EventSource(streamUrl);
+        activeEvtSource = evtSource;
+
+        evtSource.addEventListener('metadata', (e) => {
+          try {
+            latestMeta = JSON.parse(e.data);
+            stageText.textContent = 'Fetching sources';
+          } catch(err) {}
+        });
+
+        evtSource.addEventListener('thinking', (e) => {
+          stageText.textContent = 'Thinking';
+          thinkingBox.style.display = 'block';
+          try {
+            const data = JSON.parse(e.data);
+            thinkingText.textContent += data.content;
+          } catch(err) {}
+          resultsArea.scrollTop = resultsArea.scrollHeight;
+        });
+
+        evtSource.addEventListener('answer', (e) => {
+          loadingState.style.display = 'none';
+          try {
+            const data = JSON.parse(e.data);
+            answerText.textContent += data.content;
+          } catch(err) {}
+          resultsArea.scrollTop = resultsArea.scrollHeight;
+        });
+
+        evtSource.addEventListener('done', (e) => {
+          loadingState.style.display = 'none';
+          try {
+            const data = JSON.parse(e.data);
+            if (data.latency) {
+              latencyFooter.style.display = 'flex';
+              latencyTag.textContent = data.latency;
+            }
+            if (!answerText.textContent.trim()) {
+              if (thinkingText.textContent.trim()) {
+                answerText.textContent = thinkingText.textContent.trim();
+              } else {
+                answerText.textContent = "Response completed.";
+              }
+            }
+          } catch(err) {}
+
+          // Render Citations & Grounded Sources ONLY when answer is completely provided
+          if (latestMeta && latestMeta.sources && latestMeta.sources.length > 0) {
+            const accId = 'acc_' + Date.now();
+            const sourceItems = latestMeta.sources.map((s, idx) => `
+              <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                <div class="d-flex justify-content-between text-light mb-1" style="font-size: 0.83rem;">
+                  <span>Source ${idx + 1}: ${s.source_name} ${s.page_number ? `(Page ${s.page_number})` : ''}</span>
+                  <span class="text-secondary font-monospace" style="font-size: 0.75rem;">Score: ${s.score}</span>
+                </div>
+              </div>
+            `).join('');
+
+            sourcesContainer.innerHTML = `
+              <div class="accordion mt-3" id="${accId}">
+                <div class="accordion-item rounded-3 overflow-hidden bg-dark border border-secondary border-opacity-25">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button collapsed py-2 px-3 bg-dark text-light small" type="button" data-bs-toggle="collapse" data-bs-target="#col_${accId}">
+                      Citations & Sources (${latestMeta.sources.length})
+                    </button>
+                  </h2>
+                  <div id="col_${accId}" class="accordion-collapse collapse" data-bs-parent="#${accId}">
+                    <div class="accordion-body text-secondary small pt-3">
+                      <div class="list-group list-group-flush gap-2">
+                        ${sourceItems}
                       </div>
                     </div>
                   </div>
-                </div>
-              `;
-            }
-
-            cardHtml = `
-              <div class="card glass-card p-3 shadow-sm border-start border-success border-4">
-                <div class="card-body p-1">
-                  <div class="alert alert-success d-flex align-items-center justify-content-between mb-3 bg-success bg-opacity-15 border-success border-opacity-25 text-success py-2 px-3 rounded-3" role="alert">
-                    <div class="d-flex align-items-center gap-2">
-                      <i class="fa-solid fa-circle-check fs-5"></i>
-                      <span class="fw-semibold">✅ Confirmed by multiple dumps</span>
-                    </div>
-                    <small class="text-success text-opacity-75 font-monospace" style="font-size: 0.75rem;">Latency: ${data.latency || 'Realtime'}</small>
-                  </div>
-                  <div class="text-secondary small mb-2">
-                    <i class="fa-solid fa-circle-question me-1 text-primary"></i> Query: <span class="text-light fs-7">"${q}"</span>
-                  </div>
-                  <div class="mb-3 text-light leading-relaxed">
-                    ${data.answer.replace(/\n/g, '<br>')}
-                  </div>
-                  ${sourcesHtml}
-                </div>
-              </div>
-            `;
-          } else if(data.status === 'conflict') {
-            cardHtml = `
-              <div class="card glass-card p-3 shadow-sm border-start border-warning border-4">
-                <div class="card-body p-1">
-                  <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3 bg-warning bg-opacity-15 border-warning border-opacity-25 text-warning py-2 px-3 rounded-3" role="alert">
-                    <div class="d-flex align-items-center gap-2">
-                      <i class="fa-solid fa-triangle-exclamation fs-5"></i>
-                      <span class="fw-semibold">⚠️ Conflicting Dumps Detected</span>
-                    </div>
-                  </div>
-                  <div class="text-secondary small mb-2">
-                    <i class="fa-solid fa-circle-question me-1 text-primary"></i> Query: <span class="text-light">"${q}"</span>
-                  </div>
-                  <div class="p-3 rounded-3 mb-3 bg-dark bg-opacity-50 border border-warning border-opacity-25 text-light">
-                    ${data.answer.replace(/\n/g, '<br>')}
-                  </div>
-                </div>
-              </div>
-            `;
-          } else if(data.status === 'refusal') {
-            cardHtml = `
-              <div class="card glass-card p-3 shadow-sm border-start border-danger border-4">
-                <div class="card-body p-1">
-                  <div class="alert alert-danger d-flex align-items-center justify-content-between mb-2 bg-danger bg-opacity-15 border-danger border-opacity-25 text-danger py-2 px-3 rounded-3" role="alert">
-                    <div class="d-flex align-items-center gap-2">
-                      <i class="fa-solid fa-circle-xmark fs-5"></i>
-                      <span class="fw-semibold">${data.answer}</span>
-                    </div>
-                  </div>
-                  <div class="text-secondary small mb-2">
-                    <i class="fa-solid fa-circle-question me-1 text-primary"></i> Query: <span class="text-light">"${q}"</span>
-                  </div>
-                  <p class="text-secondary mb-0 style-sm" style="font-size: 0.85rem;">
-                    No matching vectors or indexed context found across active dumps in your vault. Hallucination guardrails prevented an artificial response.
-                  </p>
-                </div>
-              </div>
-            `;
-          } else if(data.status === 'chatter_guard' || data.status === 'metadata') {
-            cardHtml = `
-              <div class="card glass-card p-3 shadow-sm border-start border-primary border-4">
-                <div class="card-body p-1">
-                  <div class="text-secondary small mb-2">
-                    <i class="fa-solid fa-circle-question me-1 text-primary"></i> Query: <span class="text-light">"${q}"</span>
-                  </div>
-                  <div class="text-light">${data.answer.replace(/\n/g, '<br>')}</div>
-                </div>
-              </div>
-            `;
-          } else {
-            cardHtml = `
-              <div class="card glass-card p-3 shadow-sm border-start border-danger border-4">
-                <div class="card-body p-1 text-danger">
-                  <i class="fa-solid fa-circle-xmark me-2"></i> ${data.answer || 'An error occurred'}
                 </div>
               </div>
             `;
           }
 
-          resultsArea.insertAdjacentHTML('beforeend', cardHtml);
-          askInput.value = '';
-        } catch(err) {
-          const errHtml = `
-            <div class="card glass-card p-3 shadow-sm border-start border-danger border-4">
-              <div class="card-body p-1 text-danger">
-                <i class="fa-solid fa-circle-xmark me-2"></i> Network error connecting to Ask Engine.
-              </div>
-            </div>
-          `;
-          resultsArea.insertAdjacentHTML('beforeend', errHtml);
-        } finally {
-          askLoader.style.display = 'none';
-          resultsArea.scrollTop = resultsArea.scrollHeight;
-        }
+          stopActiveStream();
+          askInput.focus();
+        });
+
+        evtSource.addEventListener('error', (e) => {
+          loadingState.style.display = 'none';
+          let errMsg = 'Connection error or model generation failed.';
+          try {
+            if (e.data) {
+              const data = JSON.parse(e.data);
+              if (data.error) errMsg = data.error;
+            }
+          } catch(err) {}
+          if (!answerText.textContent.trim()) {
+            answerText.innerHTML = `<div class="text-danger small">${errMsg}</div>`;
+          }
+          stopActiveStream();
+          askInput.focus();
+        });
       });
 
       // Reset Button
       resetBtn.addEventListener('click', () => {
+        stopActiveStream();
         resultsArea.innerHTML = `
           <div class="text-center text-secondary my-auto py-5">
             <i class="fa-solid fa-wand-magic-sparkles fs-1 mb-3 text-primary opacity-50"></i>
@@ -926,6 +1281,7 @@
             </div>
           </div>
         `;
+        askInput.focus();
       });
 
       // Gemma Status Checker
@@ -972,6 +1328,7 @@
 
       // Initial load
       loadRecentDumps();
+      loadChatHistory();
     });
   </script>
 </body>

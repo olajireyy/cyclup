@@ -1,0 +1,177 @@
+================================================================================
+CYCLUP: The Offline-First Campus Memory
+Technical Verification & Hackathon Submission Report (Education & Learning Track)
+================================================================================
+
+1. INSPIRATION & THE LOCAL PROBLEM
+----------------------------------
+
+What local problem are we solving today?
+In universities like Lagos State University (LASU) and across many emerging 
+higher-education campuses, critical academic information — exam timetables, 
+syllabus updates, fee payment deadlines, lecture hall changes, and departmental 
+notices — is scattered across physical noticeboards, Word documents, PDFs, and 
+fast-moving WhatsApp group chats.
+
+When a student misses a WhatsApp message, it disappears into endless scrollback. 
+When campus Wi-Fi drops or mobile data is exhausted, students lose access to 
+cloud-based university portals entirely. This leads to missed exams, late fee 
+penalties, and lost academic opportunities.
+
+The Offline Solution:
+We engineered CYCLUP to recycle scattered, transient campus data into a permanent, 
+queryable institutional memory.
+
+Built specifically for the Education & Learning Track's offline requirement, CYCLUP 
+runs 100% locally on a campus LAN or single laptop without making a single call to 
+an external cloud API. Students get immediate, reliable access to vital campus 
+data even when internet connectivity is dead or mobile data is expensive.
+
+
+2. TECHNICAL ARCHITECTURE & ENGINEERING
+----------------------------------------
+
+System Architecture Pipeline:
+
+  [ User Query / Document Upload ]
+                 │
+                 ▼
+  ┌────────────────────────────────────────────────────────┐
+  │         Django Multi-Format Ingestion Engine           │
+  ├───────────────────┬───────────────────┬────────────────┤
+  │ RapidOCR          │ PyMuPDF (fitz)    │ python-docx    │
+  │ (.jpg, .png)      │ (.pdf pages)      │ (.docx files)  │
+  └───────────────────┴───────────────────┴────────────────┘
+                 │
+                 ▼
+  ┌────────────────────────────────────────────────────────┐
+  │        SQLite Vault (Dump Table with Metadata)         │
+  └──────────────────────────┬─────────────────────────────┘
+                             │
+                             ▼
+  ┌────────────────────────────────────────────────────────┐
+  │         CYCLUP AGENTIC RETRIEVAL PIPELINE              │
+  ├────────────────────────────────────────────────────────┤
+  │ 1. Conversational Chatter Guard (0.0s)                  │
+  │ 2. QA Memory Cache (0.01s - difflib >85% match)        │
+  │ 3. Metadata Tool (0.0s - direct SQLite queries)        │
+  │ 4. Agentic Query Analyzer & 7-Category Concept Matrix  │
+  │ 5. Double-Net Search Engine & Index Page Suppression   │
+  └──────────────────────────┬─────────────────────────────┘
+                             │
+                             ▼
+  ┌────────────────────────────────────────────────────────┐
+  │     Master Grounded Corroborator (Gemma 4 Engine)      │
+  │     • gemma4:e4b running locally via Ollama            │
+  │     • SSE Real-Time Streaming & Conflict Detector      │
+  └────────────────────────────────────────────────────────┘
+
+Model Choice & Local Gemma 4 Optimization:
+We integrated Gemma 4 (gemma4:e4b / gemma4:latest) running completely locally via 
+Ollama. To make this model run at peak speed on standard 4-core consumer CPUs 
+without high-end GPUs, we engineered four core local optimizations:
+
+1. 4-Core Physical Parallelization: Configured "num_thread": 4 (dynamically 
+   bound to physical CPU cores) to utilize all cores concurrently.
+2. RAM Weight Persistence: Set "keep_alive": "60m" to pin model weights into RAM, 
+   completely eliminating 40-second cold-start delays.
+3. Memory-Mapped Weight Access: Enabled "use_mmap": True to stream model layers 
+   directly from host RAM efficiently.
+4. Targeted Generation Caps & Low Temp: Capped token output (num_predict: 90 for 
+   fast mode, up to 1000 for SSE streaming) and set temperature: 0.1 with 
+   num_ctx: 4096 for maximum deterministic factual grounding.
+
+
+3. INGESTION PIPELINE: NATIVE MULTIMODALITY & MULTI-FORMAT PARSERS
+------------------------------------------------------------------
+
+CYCLUP ingests raw unstructured campus files directly into a lightweight SQLite database:
+
+• Image Dumps (.jpg, .png): Integrated RapidOCR (rapidocr-onnxruntime), an ONNX-
+  accelerated local engine delivering sub-second (< 0.4s) text extraction from 
+  timetable photos, whiteboard notes, and WhatsApp screenshots.
+• Document & PDF Dumps (.pdf, .docx, .txt): Digital PDFs are sliced page-by-page 
+  using PyMuPDF (fitz) where 1 PDF Page = 1 Chunk. This preserves exact page numbers 
+  (page_number) in SQLite for precise source citations (e.g. Syllabus.pdf (Page 4)). 
+  Word documents are parsed natively via python-docx.
+• Scanned PDF Safety Guard: If a user uploads a 0-text scanned PDF, the engine 
+  automatically detects it and returns a 422 alert prompting the user to upload 
+  page photos directly.
+
+
+4. RETRIEVAL, GUARDRAILS & AGENTIC ANALYSIS ENGINE
+---------------------------------------------------
+
+Instead of heavy vector databases (Chroma/Pinecone) that bog down local hardware, 
+we built an Adaptive Double-Net Keyword Search using Django's native ORM matching 
+raw_text, source_name, course_code, and tags, backed by four instant agentic guardrails:
+
+• Conversational Chatter Guard (0.0s Latency): Intercepts greetings and praise 
+  ("heyyyy", "hii", "thanks", "wow") and returns instant friendly responses without 
+  wasting LLM compute.
+• QA Memory Cache (0.01s Latency): Checks past answered questions using string 
+  similarity (>85%) to serve instant cache hits.
+• Agentic Document Metadata Tool (0.0s Latency): Directly queries SQLite for page 
+  counts and file listings without LLM calls.
+• Agentic Query Analyzer & 7-Category Concept Dictionary: Parses questions, strips 
+  preamble ("could you please tell me") and domain noise ("lasu", "campus"). Maps 
+  user verbs across 7 campus categories:
+    1. Lecturers (teaches, lecturer, prof, instructor, doctor, dr)
+    2. Venues (where, location, venue, hall, auditorium, lab)
+    3. Schedules (when, time, timetable, hours, slot)
+    4. Exams (test, exam, malpractice, expulsion, assessment)
+    5. Fees (cost, fee, tuition, caution, payment, dues)
+    6. Grading (gpa, cgpa, grade, marks, attendance, 75%)
+    7. Health/Emergency (doctor, clinic, ambulance, security, medical)
+• Concept & Filename Boosts: Category concept matches boost page scores by +70 
+  points, filename matches add +50 points, and course codes add +40 points.
+• Back-of-Book Index Suppression: Automatically suppresses index page lists 
+  containing dense page numbers to prevent LLM index recitation.
+• Native Conflict Detection: If two notices contradict each other (e.g. an exam 
+  moved from Monday to Wednesday), Gemma highlights BOTH sources (Source 1 vs Source 2) 
+  and alerts the student.
+• Strict Zero-Hallucination Refusal: Off-topic or missing queries trigger the exact 
+  honest decline: "I don't have that information in what's been dumped here."
+
+
+5. SPRINT CHALLENGES & ENGINEERING SOLUTIONS
+--------------------------------------------
+
+Challenge 1: CPU Latency & Cold Load Trap
+- Problem: Running a 9.6B model on a standard 4-core CPU initially caused 80s+ delays.
+- Solution: Decoupled OCR (RapidOCR), locked weights in RAM (keep_alive: 60m), 
+  used memory mapping (use_mmap), capped token generation, and implemented 
+  Server-Sent Events (SSE) live streaming, reducing response times to sub-5 seconds.
+
+Challenge 2: Unpredictable Query Phrasing
+- Problem: Hardcoded stop-word lists failed on natural judge/student phrasing.
+- Solution: Engineered an Agentic Query Analyzer with a 7-category concept matrix.
+
+Challenge 3: Vector Database Offline Constraints
+- Problem: Vector databases introduce heavy dependency chains and RAM bottlenecks.
+- Solution: Designed a pure Django Q-object double-net keyword search with custom 
+  scoring and concept boosting, ensuring 100% offline reliability.
+
+Challenge 4: Hallucination Prevention & Index Recitation
+- Problem: LLMs hallucinate or recite back-of-book index pages.
+- Solution: Enforced strict grounding system prompts, back-of-book filters, and 
+  a 0.0s refusal guard ("I don't have that information in what's been dumped here.").
+
+
+6. TECHNICAL SPECIFICATIONS & SYSTEM PROOF
+------------------------------------------
+
+- Framework: Django 4.2+ on Python 3.10+
+- Inference Engine: Gemma 4 (gemma4:e4b) running locally via Ollama
+- OCR Engine: RapidOCR (rapidocr-onnxruntime ONNX model)
+- Document Parsing: PyMuPDF (fitz) & python-docx
+- Database: Native SQLite 3 (db.sqlite3)
+- Real-time API: Server-Sent Events (SSE) streaming (/api/ask/stream/)
+
+
+7. SUBMISSION LINKS
+-------------------
+
+- Live Demo Video: [Insert Link to Unlisted YouTube or Drive Video]
+- Source Code Repository: [Insert Link to Public GitHub Repo]
+================================================================================

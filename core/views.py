@@ -1,13 +1,14 @@
 import json
 import re
+import time
 import logging
-from django.http import JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET
 from django.db.models import Q, Max
-from .models import Dump
-from .gemma_client import ask_gemma
+from .models import Dump, ChatMessage
+from .gemma_client import ask_gemma, ask_gemma_generator, get_available_model
 from .ingestion import parse_txt, parse_docx, parse_pdf, parse_image, detect_file_type
 
 logger = logging.getLogger(__name__)
@@ -50,13 +51,12 @@ def gemma_status(request):
         models = data.get("models", [])
         model_names = [m.get("name", "") for m in models]
 
-        # Check for gemma4:latest (Ollama may store as "gemma4:latest" or "gemma4")
-        gemma_found = any("gemma4" in name for name in model_names)
+        active_tag = get_available_model()
+        gemma_found = any("gemma" in name.lower() for name in model_names)
 
-        # Grab size info if present
         gemma_info = {}
         for m in models:
-            if "gemma4" in m.get("name", ""):
+            if m.get("name") == active_tag or (not gemma_info and "gemma" in m.get("name", "").lower()):
                 size_bytes = m.get("size", 0)
                 size_gb = round(size_bytes / (1024 ** 3), 1) if size_bytes else None
                 gemma_info = {
@@ -65,7 +65,8 @@ def gemma_status(request):
                     "parameter_size": m.get("details", {}).get("parameter_size", ""),
                     "quantization": m.get("details", {}).get("quantization_level", ""),
                 }
-                break
+                if m.get("name") == active_tag:
+                    break
 
         return JsonResponse({
             "connected": True,
@@ -296,6 +297,101 @@ def list_dumps(request):
     return JsonResponse({"dumps": results})
 
 
+@csrf_exempt
+def delete_dump(request, dump_id):
+    """Delete a single dump or all chunks matching its source_name."""
+    if request.method not in ["DELETE", "POST"]:
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        target = Dump.objects.filter(id=dump_id).first()
+        if not target:
+            return JsonResponse({"error": "Dump not found"}, status=404)
+
+        source_name = target.source_name
+        deleted_count, _ = Dump.objects.filter(source_name=source_name).delete()
+        return JsonResponse({"status": "success", "message": f"Deleted '{source_name}' ({deleted_count} entries)."})
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+
+
+@csrf_exempt
+def bulk_delete_dumps(request):
+    """Delete multiple or all dumps by IDs or source_names."""
+    if request.method != "POST":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body.decode("utf-8")) if request.body else {}
+        dump_ids = data.get("ids", [])
+        source_names = data.get("source_names", [])
+
+        deleted_total = 0
+        if dump_ids:
+            names_to_delete = Dump.objects.filter(id__in=dump_ids).values_list("source_name", flat=True)
+            cnt, _ = Dump.objects.filter(source_name__in=names_to_delete).delete()
+            deleted_total += cnt
+        elif source_names:
+            cnt, _ = Dump.objects.filter(source_name__in=source_names).delete()
+            deleted_total += cnt
+
+        return JsonResponse({"status": "success", "message": f"Bulk deleted {deleted_total} dump entries."})
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+
+
+@require_GET
+def list_chat_history(request):
+    """Return stored chat conversation history as JSON."""
+    messages = ChatMessage.objects.values(
+        "id", "session_id", "user_query", "assistant_response",
+        "mode", "status", "sources", "latency", "created_at"
+    ).order_by("created_at")
+
+    history = []
+    for m in messages:
+        history.append({
+            "id": m["id"],
+            "user_query": m["user_query"],
+            "assistant_response": m["assistant_response"],
+            "mode": m["mode"],
+            "status": m["status"],
+            "sources": m["sources"] if isinstance(m["sources"], list) else [],
+            "latency": m["latency"],
+            "created_at": m["created_at"].isoformat(),
+        })
+
+    return JsonResponse({"messages": history})
+
+
+@csrf_exempt
+def delete_chat_message(request, message_id):
+    """Delete an individual chat message entry."""
+    if request.method not in ["DELETE", "POST"]:
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        cnt, _ = ChatMessage.objects.filter(id=message_id).delete()
+        if cnt == 0:
+            return JsonResponse({"error": "Message not found"}, status=404)
+        return JsonResponse({"status": "success", "message": f"Deleted chat message #{message_id}."})
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+
+
+@csrf_exempt
+def clear_chat_history(request):
+    """Clear all chat history."""
+    if request.method not in ["DELETE", "POST"]:
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        cnt, _ = ChatMessage.objects.all().delete()
+        return JsonResponse({"status": "success", "message": f"Cleared {cnt} chat history messages."})
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+
+
 # =============================================================================
 # 1. Conversational Chatter Guard (0.0s Latency)
 # =============================================================================
@@ -312,7 +408,7 @@ def check_chatter_guard(query_text: str):
     cleaned = query_text.strip().lower()
     for pattern in CHATTER_PATTERNS:
         if re.search(pattern, cleaned):
-            return "Glad to help! Let me know if you have any other campus questions."
+            return "Glad to help! Let me know if you have any campus questions."
     return None
 
 
@@ -350,10 +446,10 @@ def handle_metadata_tool(query_text: str):
 
     # Query for file listing
     if any(phrase in cleaned for phrase in ["what files", "list files", "files in vault", "files available", "what documents", "show files"]):
-        files = list(Dump.objects.values_list("source_name", flat=True).distinct())
+        files = [fn for fn in dict.fromkeys(Dump.objects.values_list("source_name", flat=True)) if fn]
         if files:
-            file_list_str = ", ".join(files)
-            return f"The vault currently contains {len(files)} file(s): {file_list_str}."
+            file_list_str = "\n".join([f"• {fn}" for fn in files])
+            return f"The vault currently contains {len(files)} file(s):\n\n{file_list_str}"
         else:
             return "The vault is currently empty. No files or dumps have been ingested yet."
 
@@ -545,13 +641,18 @@ def double_net_search(analysis_result: dict, raw_user_question: str):
     # Sort descending by score
     scored_chunks.sort(key=lambda item: item[0], reverse=True)
 
-    # Precision Rule: If top result score >= 80, send ONLY top 1 page to Gemma 4
     if scored_chunks:
+        top_source = scored_chunks[0][1].source_name
+        all_top_source_chunks = [item for item in scored_chunks if item[1].source_name == top_source]
+        if len(all_top_source_chunks) > 1:
+            all_top_source_chunks.sort(key=lambda x: (x[1].page_number or 0, x[1].id))
+            return all_top_source_chunks[:10]
+
         top_score = scored_chunks[0][0]
         if top_score >= 80:
-            return scored_chunks[:1]
-        else:
             return scored_chunks[:3]
+        else:
+            return scored_chunks[:5]
 
     return []
 
@@ -559,7 +660,11 @@ def double_net_search(analysis_result: dict, raw_user_question: str):
 # =============================================================================
 # 5. Master Grounded Corroborator Execution
 # =============================================================================
-MASTER_GROUNDED_SYSTEM_PROMPT = """You are a campus information assistant for LASU. Answer the user's question concisely (in 1-2 sentences) using ONLY the sources below. Do NOT use outside knowledge or quote index listings.
+MASTER_GROUNDED_SYSTEM_PROMPT_FAST = """You are an intelligent campus information AI assistant for LASU. Synthesize a natural, clear, and concise response to the user's question using ONLY the source context below.
+
+TYPO & SYNTHESIS INSTRUCTIONS:
+- Correct any minor spelling or typos in the user's question gracefully without mentioning them.
+- Do NOT just copy raw text verbatim; explain naturally in your own words while staying 100% faithful to the context.
 
 CORROBORATION RULES:
 1. Agreement: If multiple sources provide the exact same answer, end your response by stating: "✅ Confirmed by multiple dumps."
@@ -573,9 +678,29 @@ Question: {question}
 
 Answer:"""
 
-def execute_master_corroborator(scored_chunks, user_question: str):
+MASTER_GROUNDED_SYSTEM_PROMPT_DETAILED = """You are an intelligent campus information AI assistant for LASU. Synthesize a thorough, detailed response using clear structured paragraphs and bullet points based ONLY on the source context below.
+
+TYPO & SYNTHESIS INSTRUCTIONS:
+- Correct any minor spelling or typos in the user's question gracefully without mentioning them.
+- Explain the concepts fluidly and logically in your own words while preserving strict factual accuracy from the sources.
+
+CORROBORATION RULES:
+1. Agreement: If multiple sources provide the exact same answer, end your response by stating: "✅ Confirmed by multiple dumps."
+2. Conflict: If sources contradict each other (e.g. one says exam is Monday, another says Wednesday), state BOTH versions and cite Source numbers (e.g. Source 1 vs Source 2). Do not guess.
+3. Missing Data: If sources do not contain the answer, say EXACTLY: "I don't have that information in what's been dumped here."
+
+Context:
+{context}
+
+Question: {question}
+
+Detailed Answer:"""
+
+MASTER_GROUNDED_SYSTEM_PROMPT = MASTER_GROUNDED_SYSTEM_PROMPT_FAST
+
+def execute_master_corroborator(scored_chunks, user_question: str, provider: str = "auto"):
     """
-    Formats retrieved chunks into Master Grounded Prompt and invokes Gemma 4.
+    Formats retrieved chunks into Master Grounded Prompt and invokes Gemma 4 / Cloud API.
     """
     if not scored_chunks:
         return {
@@ -609,7 +734,7 @@ def execute_master_corroborator(scored_chunks, user_question: str):
     prompt = MASTER_GROUNDED_SYSTEM_PROMPT.format(context=context_str, question=user_question)
 
     try:
-        raw_answer = ask_gemma(prompt, max_tokens=90)
+        raw_answer = ask_gemma(prompt, max_tokens=150, provider=provider)
         if "Source 1 vs Source 2" in raw_answer or "vs" in raw_answer.lower():
             status = "conflict"
         elif "don't have that information" in raw_answer.lower() or "don't have" in raw_answer.lower():
@@ -626,7 +751,7 @@ def execute_master_corroborator(scored_chunks, user_question: str):
     except Exception as exc:
         logger.error("Error calling ask_gemma: %s", exc)
         return {
-            "answer": f"System error calling Ollama model: {str(exc)}",
+            "answer": f"System error calling model: {str(exc)}",
             "status": "error",
             "top_score": top_score,
             "sources": sources_meta,
@@ -651,17 +776,21 @@ def ask_question(request):
         return JsonResponse({"error": "Method not allowed. Use POST or GET."}, status=405)
 
     user_question = ""
+    provider = "auto"
     if request.method == "POST":
         if request.content_type == "application/json":
             try:
                 data = json.loads(request.body.decode("utf-8"))
                 user_question = data.get("question", "") or data.get("q", "")
+                provider = data.get("provider", "auto")
             except json.JSONDecodeError:
                 return JsonResponse({"error": "Invalid JSON body."}, status=400)
         else:
             user_question = request.POST.get("question", "") or request.POST.get("q", "")
+            provider = request.POST.get("provider", "auto")
     else:
         user_question = request.GET.get("question", "") or request.GET.get("q", "")
+        provider = request.GET.get("provider", "auto")
 
     user_question = user_question.strip()
     if not user_question:
@@ -696,10 +825,205 @@ def ask_question(request):
     scored_chunks = double_net_search(analysis_result, user_question)
 
     # STEP 5: Master Grounded Corroborator Execution
-    result = execute_master_corroborator(scored_chunks, user_question)
+    result = execute_master_corroborator(scored_chunks, user_question, provider=provider)
     result["analysis"] = {
         "cleaned_query": analysis_result["cleaned_query"],
         "matched_categories": analysis_result["matched_categories"],
     }
 
     return JsonResponse(result)
+
+
+# =============================================================================
+# Streaming Q&A Endpoint: ask_question_stream(request)
+# =============================================================================
+@csrf_exempt
+def ask_question_stream(request):
+    """
+    Real-time Server-Sent Events (SSE) streaming endpoint.
+    Yields chunks:
+        event: metadata -> JSON with sources, status, top_score
+        event: thinking -> JSON with thinking token
+        event: answer   -> JSON with answer token
+        event: done     -> JSON with final latency
+    """
+    start_time = time.time()
+    user_question = request.GET.get("question", "") or request.GET.get("q", "")
+    mode = request.GET.get("mode", "fast")
+    provider = request.GET.get("provider", "auto")
+
+    if not user_question and request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            user_question = data.get("question", "") or data.get("q", "")
+            mode = data.get("mode", "fast")
+            provider = data.get("provider", "auto")
+        except json.JSONDecodeError:
+            pass
+
+    user_question = user_question.strip()
+
+    def event_stream():
+        if not user_question:
+            yield "event: error\ndata: {\"error\": \"Missing question parameter\"}\n\n"
+            return
+
+        # 1. Chatter Guard
+        chatter_resp = check_chatter_guard(user_question)
+        if chatter_resp:
+            elapsed = round(time.time() - start_time, 3)
+            chat_obj = ChatMessage.objects.create(
+                user_query=user_question,
+                assistant_response=chatter_resp,
+                mode=mode,
+                status="chatter_guard",
+                sources=[],
+                latency=f"{elapsed}s",
+            )
+            meta = json.dumps({"status": "chatter_guard", "top_score": 0, "sources": [], "msg_id": chat_obj.id})
+            yield f"event: metadata\ndata: {meta}\n\n"
+            ans = json.dumps({"content": chatter_resp})
+            yield f"event: answer\ndata: {ans}\n\n"
+            done_data = json.dumps({"latency": f"{elapsed}s", "msg_id": chat_obj.id})
+            yield f"event: done\ndata: {done_data}\n\n"
+            return
+
+        # 2. Metadata Tool
+        meta_resp = handle_metadata_tool(user_question)
+        if meta_resp:
+            elapsed = round(time.time() - start_time, 3)
+            chat_obj = ChatMessage.objects.create(
+                user_query=user_question,
+                assistant_response=meta_resp,
+                mode=mode,
+                status="metadata",
+                sources=[],
+                latency=f"{elapsed}s",
+            )
+            meta = json.dumps({"status": "metadata", "top_score": 0, "sources": [], "msg_id": chat_obj.id})
+            yield f"event: metadata\ndata: {meta}\n\n"
+            ans = json.dumps({"content": meta_resp})
+            yield f"event: answer\ndata: {ans}\n\n"
+            done_data = json.dumps({"latency": f"{elapsed}s", "msg_id": chat_obj.id})
+            yield f"event: done\ndata: {done_data}\n\n"
+            return
+
+        # 3. Analyze & Double-Net Search
+        analysis_res = analyze_user_query(user_question)
+        scored_chunks = double_net_search(analysis_res, user_question)
+
+        if not scored_chunks:
+            elapsed = round(time.time() - start_time, 2)
+            refusal_txt = "I don't have that information in what's been dumped here."
+            chat_obj = ChatMessage.objects.create(
+                user_query=user_question,
+                assistant_response=refusal_txt,
+                mode=mode,
+                status="refusal",
+                sources=[],
+                latency=f"{elapsed}s",
+            )
+            meta = json.dumps({"status": "refusal", "top_score": 0, "sources": [], "msg_id": chat_obj.id})
+            yield f"event: metadata\ndata: {meta}\n\n"
+            ans = json.dumps({"content": refusal_txt})
+            yield f"event: answer\ndata: {ans}\n\n"
+            done_data = json.dumps({"latency": f"{elapsed}s", "msg_id": chat_obj.id})
+            yield f"event: done\ndata: {done_data}\n\n"
+            return
+
+        # Format sources metadata
+        top_score = scored_chunks[0][0]
+        context_blocks = []
+        sources_meta = []
+        for idx, (score, dump) in enumerate(scored_chunks, 1):
+            src_label = f"Source {idx}: {dump.source_name}"
+            if dump.page_number:
+                src_label += f" (Page {dump.page_number})"
+            if dump.course_code:
+                src_label += f" [{dump.course_code}]"
+
+            context_blocks.append(f"--- {src_label} ---\n{dump.raw_text}")
+            sources_meta.append({
+                "source_name": dump.source_name,
+                "page_number": dump.page_number,
+                "course_code": dump.course_code,
+                "score": score,
+            })
+
+        context_str = "\n\n".join(context_blocks)
+        if mode == "detailed":
+            prompt_tmpl = MASTER_GROUNDED_SYSTEM_PROMPT_DETAILED
+            think_flag = False
+        elif mode == "thinking":
+            prompt_tmpl = MASTER_GROUNDED_SYSTEM_PROMPT_DETAILED
+            think_flag = True
+        else:  # 'fast'
+            prompt_tmpl = MASTER_GROUNDED_SYSTEM_PROMPT_FAST
+            think_flag = False
+
+        prompt = prompt_tmpl.format(context=context_str, question=user_question)
+
+        meta = json.dumps({
+            "status": "grounded",
+            "top_score": top_score,
+            "sources": sources_meta,
+            "mode": mode,
+            "provider": provider,
+        })
+        yield f"event: metadata\ndata: {meta}\n\n"
+
+        # Stream tokens live from Gemma & accumulate response
+        full_answer_acc = []
+        thinking_acc = []
+        try:
+            for chunk in ask_gemma_generator(prompt, think=think_flag, max_tokens=1000, provider=provider):
+
+                event_type = chunk.get("type", "answer")
+                content = chunk.get("content", "")
+                if event_type == "answer":
+                    full_answer_acc.append(content)
+                elif event_type == "thinking":
+                    thinking_acc.append(content)
+                elif event_type == "error":
+                    logger.error("Error from gemma generator: %s", content)
+                    err_json = json.dumps({"error": content})
+                    yield f"event: error\ndata: {err_json}\n\n"
+                    return
+                token_json = json.dumps({"content": content})
+                yield f"event: {event_type}\ndata: {token_json}\n\n"
+        except Exception as exc:
+            logger.exception("Error in ask_question_stream generator")
+            err_json = json.dumps({"error": str(exc)})
+            yield f"event: error\ndata: {err_json}\n\n"
+            return
+
+        complete_answer = "".join(full_answer_acc).strip()
+        if not complete_answer and thinking_acc:
+            complete_answer = "".join(thinking_acc).strip()
+            token_json = json.dumps({"content": complete_answer})
+            yield f"event: answer\ndata: {token_json}\n\n"
+
+        if not complete_answer:
+            complete_answer = "Could not generate an answer from the retrieved sources."
+            token_json = json.dumps({"content": complete_answer})
+            yield f"event: answer\ndata: {token_json}\n\n"
+
+        elapsed = round(time.time() - start_time, 2)
+
+        chat_obj = ChatMessage.objects.create(
+            user_query=user_question,
+            assistant_response=complete_answer,
+            mode=mode,
+            status="grounded",
+            sources=sources_meta,
+            latency=f"{elapsed}s",
+        )
+
+        done_data = json.dumps({"latency": f"{elapsed}s", "msg_id": chat_obj.id})
+        yield f"event: done\ndata: {done_data}\n\n"
+
+    response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
+    return response
+

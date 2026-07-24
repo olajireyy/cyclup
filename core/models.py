@@ -39,3 +39,27 @@ class Dump(models.Model):
         if self.page_number is not None:
             label += f" (p.{self.page_number})"
         return label
+
+
+class ChatMessage(models.Model):
+    """
+    Stores historical chat interactions between student and assistant.
+    """
+
+    session_id = models.CharField(max_length=100, default="default")
+    user_query = models.TextField()
+    assistant_response = models.TextField(blank=True, default="")
+    mode = models.CharField(max_length=20, default="fast")
+    status = models.CharField(max_length=20, default="grounded")
+    sources = models.JSONField(default=list, blank=True)
+    latency = models.CharField(max_length=20, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "Chat Message"
+        verbose_name_plural = "Chat Messages"
+
+    def __str__(self):
+        return f"[{self.mode}] {self.user_query[:30]}"
+

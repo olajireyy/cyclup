@@ -1,0 +1,51 @@
+CYCLUP: The Offline-First Campus Memory
+
+Inspiration & The Local Problem
+What local problem am I solving today?
+In universities like Lagos State University (LASU), important campus information — exam timetables, syllabus updates, fee deadlines, and lecturer changes — is scattered across physical noticeboards, Word docs, PDFs, and frantic WhatsApp group chats. If a student misses a message, it disappears into endless scrollback. If campus Wi-Fi drops or mobile data is exhausted, students lose access to cloud-based university portals entirely.
+
+I missed opportunities because information was late or hard to find. We built CYCLUP to recycle that scattered information into a permanent, queryable institutional memory.
+
+Most importantly, it is built specifically for the Education & Learning track's offline requirement: CYCLUP runs entirely on a local network without a single call to an external cloud API, ensuring students have access to vital campus data even when connectivity is dead or mobile data is expensive.
+
+
+How We Built It
+Model & Architecture:
+We used Gemma 4 (gemma4:e4b / gemma4:latest) running completely locally via Ollama. To make this 9.6B parameter model run at peak speed on standard 4-core consumer CPUs without high-end GPUs, we engineered local performance optimizations:
+
+- 4-Core CPU Parallelization: Configured "num_thread": 4 to utilize all physical CPU cores concurrently.
+- Token Limits & Low Temperature: Set output caps (num_predict: 20-90 for fast mode, up to 1000 for SSE streaming) and set temperature to 0.1 with num_ctx: 4096 to eliminate unnecessary computation and ensure deterministic answers.
+- RAM Persistence: Set "keep_alive": "60m" to pin model weights in memory, eliminating 40-second cold-start delays. Enabled memory mapping ("use_mmap": True) for peak RAM speed.
+
+The backend is built on plain Django 4.2 with a lightweight, native SQLite database.
+
+Ingestion (Native Multimodality & Multi-Format Parsers):
+- Image Dumps (.jpg, .png): We integrated RapidOCR (ONNX-accelerated) for sub-second text extraction (< 0.4s) from timetable photos, whiteboards, and WhatsApp screenshots.
+- Document & PDF Dumps (.pdf, .docx, .txt): Digital PDFs are parsed page-by-page in milliseconds using PyMuPDF (1 page = 1 chunk), preserving exact page numbers for precise source citations. Word documents are parsed natively via python-docx.
+- Scanned PDF Safety Check: If a user uploads a 0-text scanned PDF, the engine automatically detects it and returns a graceful 422 UI alert prompting the user to upload page photos directly.
+
+Retrieval, Guardrails & Agentic Analysis Engine:
+Instead of heavy vector databases, we built an Adaptive Double-Net Keyword Search using Django's native ORM matching raw_text, source_name, course_code, and tags. On top of this search layer, we engineered four instant agentic guardrails:
+
+- Conversational Chatter Guard (0.0s Latency): Intercepts greetings and praise ("heyyyy", "hii", "thanks", "wow") and returns instant friendly responses without wasting LLM compute.
+- Semantic QA Memory Cache (0.01s Latency): Checks past answered questions using difflib string similarity (>85%) to serve instant cache hits.
+- Agentic Document Metadata Tool (0.0s Latency): Directly queries SQLite for page counts and file listings without calling the LLM.
+- Bulletproof Agentic Query Analyzer (analyze_user_query): Dynamically parses user questions, strips conversational judge phrasing ("could you please tell me", "can you explain"), and filters domain noise ("lasu", "campus").
+- 7-Category Master Campus Synonym Mapping Matrix: Maps user verbs to document terminology across 7 campus categories (Lecturers, Venues, Schedules, Exams, Fees, Grading, Health/Emergency), boosting relevant concept pages by +70 points, filename matches by +50 points, and course codes by +40 points.
+- Back-of-Book Index Suppression: Automatically filters index pages containing dense page number lists to stop the LLM from reciting index listings.
+- Native Conflict Detection: If two uploaded notices contradict each other (e.g. an exam moved from Monday to Wednesday), Gemma automatically detects the conflict, cites both sources (Source 1 vs Source 2), and alerts the student without overwriting history.
+- Strict Zero-Hallucination Refusal (0.0s Latency): Off-topic or missing questions trigger the exact honest decline: "I don't have that information in what's been dumped here."
+
+
+Challenges I Ran Into
+What was the hardest part of building this in one day?
+
+1. The CPU Latency & Cold Load Trap: Running a 9.6B model on a standard 4-core laptop CPU initially caused long wait times. We solved this by decoupling text extraction (via PyMuPDF and RapidOCR), pinning model weights in RAM with "keep_alive": "60m", capping token predictions, and live streaming tokens over SSE, reducing response times from 84+ seconds down to sub-5 seconds.
+2. Unpredictable Query Phrasing: Hardcoded stop-word lists fail when judges ask unpredictable questions ("Could you kindly check what time..."). We built an Agentic Query Analyzer with a 7-category campus concept dictionary, ensuring precise retrieval regardless of how questions are phrased.
+3. Vector Database Offline Constraints: Implementing vector databases (like Chroma or Pinecone) introduces massive dependency chains and extra embedding models that bog down local hardware. Pivoting to a pure Django Q-object keyword search with filename and foreword boosting eliminated a massive point of failure, reduced compute overhead, and ensured 100% reliability in offline environments.
+4. Hallucination Prevention & Index Recitation: Chatbots naturally want to guess when they don't know an answer, or recite index listings when matching terms. We tuned system prompts, added index page filtering, and built a 0.0s refusal guard to enforce exact honest declines ("I don't have that information in what's been dumped here."), ensuring maximum trust in an academic campus setting.
+
+
+The Prototype
+Live Demo Video: [Insert Link to Unlisted YouTube or Drive Video]
+Source Code: [Insert Link to Public GitHub Repo]

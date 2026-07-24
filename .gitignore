@@ -1,0 +1,15 @@
+# Environment variables & secrets
+.env
+
+# Python & Django
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+*.sqlite3
+media/
+staticfiles/
+.idea/
+.vscode/

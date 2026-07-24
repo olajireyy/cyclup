@@ -7,11 +7,22 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "cyclup-hackathon-demo-key-not-for-production"
+# ── Load .env file automatically ────────────────────────────────────────────
+env_file = BASE_DIR / ".env"
+if env_file.exists():
+    with open(env_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, val = line.split("=", 1)
+                os.environ[key.strip()] = val.strip().strip("'\"")
 
-DEBUG = True
+SECRET_KEY = os.getenv("SECRET_KEY", "cyclup-hackathon-demo-key-not-for-production")
+
+DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
 ALLOWED_HOSTS = ["*"]  # Allow all hosts for local network hotspot demo
+
 
 INSTALLED_APPS = [
     "django.contrib.admin",
