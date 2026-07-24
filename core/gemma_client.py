@@ -20,22 +20,28 @@ logger = logging.getLogger(__name__)
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
 DEFAULT_MODEL_NAME = "gemma4:e4b"
-KEEP_ALIVE = "60m"  # keep model loaded for 60 minutes
+KEEP_ALIVE = "60m"  # keep# ── Cloud API Recording Fallback Settings ───────────────────────────────────
+def get_env_gemini_key() -> str:
+    return os.getenv("GEMINI_API_KEY", "").strip()
 
-# ── Cloud API Recording Fallback Settings ───────────────────────────────────
-# Set USE_CLOUD_API = True (or set GEMINI_API_KEY / OPENAI_API_KEY env vars)
-# to switch to lightning-fast cloud inference for recording demo videos.
-USE_CLOUD_API = os.getenv("USE_CLOUD_API", "false").lower() in ("true", "1", "yes")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+def get_env_openai_key() -> str:
+    return os.getenv("OPENAI_API_KEY", "").strip()
+
+
+def is_use_cloud_api() -> bool:
+    return os.getenv("USE_CLOUD_API", "false").lower() in ("true", "1", "yes")
 
 
 def get_available_model() -> str:
     """Query Ollama tags endpoint and return the best available Gemma 4 model tag."""
-    if USE_CLOUD_API or GEMINI_API_KEY or OPENAI_API_KEY:
-        if GEMINI_API_KEY:
+    gemini_key = get_env_gemini_key()
+    openai_key = get_env_openai_key()
+
+    if is_use_cloud_api() or gemini_key or openai_key:
+        if gemini_key:
             return "gemini-1.5-flash (Cloud Demo Mode)"
-        if OPENAI_API_KEY:
+        if openai_key:
             return "gpt-4o-mini (Cloud Demo Mode)"
         return "Cloud API (Demo Mode)"
 
@@ -90,25 +96,27 @@ def _ask_openai_cloud(prompt: str, api_key: str, max_tokens: int) -> str:
     return ""
 
 
-
 def ask_gemma(prompt: str, max_tokens: int = 150, think: bool = False, provider: str = "auto") -> str:
     """
     Send *prompt* to local Ollama or Cloud API demo fallback.
     """
+    gemini_key = get_env_gemini_key()
+    openai_key = get_env_openai_key()
+
     use_cloud = False
     if provider == "cloud":
         use_cloud = True
     elif provider == "local":
         use_cloud = False
     else:  # "auto"
-        use_cloud = USE_CLOUD_API or bool(GEMINI_API_KEY or OPENAI_API_KEY)
+        use_cloud = is_use_cloud_api() or bool(gemini_key or openai_key)
 
     if use_cloud:
         try:
-            if GEMINI_API_KEY:
-                return _ask_gemini_cloud(prompt, GEMINI_API_KEY)
-            if OPENAI_API_KEY:
-                return _ask_openai_cloud(prompt, OPENAI_API_KEY, max_tokens)
+            if gemini_key:
+                return _ask_gemini_cloud(prompt, gemini_key)
+            if openai_key:
+                return _ask_openai_cloud(prompt, openai_key, max_tokens)
             if provider == "cloud":
                 raise RuntimeError("Cloud API requested, but neither GEMINI_API_KEY nor OPENAI_API_KEY is configured in .env.")
         except Exception as exc:
@@ -188,16 +196,19 @@ def ask_gemma_generator(prompt: str, max_tokens: int = 500, think: bool = False,
     Generator streaming tokens from local Ollama model or Cloud API fallback.
     Yields dicts: {"type": "thinking" | "answer" | "error", "content": str}
     """
+    gemini_key = get_env_gemini_key()
+    openai_key = get_env_openai_key()
+
     use_cloud = False
     if provider == "cloud":
         use_cloud = True
     elif provider == "local":
         use_cloud = False
     else:  # "auto"
-        use_cloud = USE_CLOUD_API or bool(GEMINI_API_KEY or OPENAI_API_KEY)
+        use_cloud = is_use_cloud_api() or bool(gemini_key or openai_key)
 
     if use_cloud:
-        if not GEMINI_API_KEY and not OPENAI_API_KEY and provider == "cloud":
+        if not gemini_key and not openai_key and provider == "cloud":
             yield {"type": "error", "content": "Cloud API requested, but neither GEMINI_API_KEY nor OPENAI_API_KEY is configured in .env."}
             return
 
@@ -205,23 +216,19 @@ def ask_gemma_generator(prompt: str, max_tokens: int = 500, think: bool = False,
             if think:
                 yield {"type": "thinking", "content": "Analyzing campus dumps & synthesizing factual answer via Cloud API...\n"}
 
-            if GEMINI_API_KEY:
-                text = _ask_gemini_cloud(prompt, GEMINI_API_KEY)
+            if gemini_key:
+                text = _ask_gemini_cloud(prompt, gemini_key)
                 yield {"type": "answer", "content": text}
                 return
-            if OPENAI_API_KEY:
-                text = _ask_openai_cloud(prompt, OPENAI_API_KEY, max_tokens)
+            if openai_key:
+                text = _ask_openai_cloud(prompt, openai_key, max_tokens)
                 yield {"type": "answer", "content": text}
                 return
         except Exception as exc:
             logger.error("Cloud API generator error: %s", exc)
             yield {"type": "error", "content": f"Cloud API error: {exc}"}
-            return
-
     cpu_threads = os.cpu_count() or 4
     model_name = get_available_model()
-
-
 
     payload = {
         "model": model_name,
