@@ -249,6 +249,53 @@
       right: 1rem;
       z-index: 1055;
     }
+
+    /* Custom Dark Dropdowns */
+    .custom-dropdown-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #e2e8f0;
+      border-radius: 20px;
+      padding: 0.35rem 0.9rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .custom-dropdown-btn:hover, .custom-dropdown-btn:focus, .custom-dropdown-btn.show {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: #3b82f6;
+      color: #ffffff;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    .custom-dropdown-menu {
+      background: #1a1a22 !important;
+      border: 1px solid rgba(255, 255, 255, 0.15) !important;
+      border-radius: 12px !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+      padding: 0.4rem !important;
+      min-width: 220px !important;
+    }
+    .custom-dropdown-item {
+      color: #cbd5e1 !important;
+      border-radius: 8px !important;
+      padding: 0.5rem 0.75rem !important;
+      font-size: 0.82rem !important;
+      font-weight: 500 !important;
+      transition: all 0.15s ease !important;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .custom-dropdown-item:hover {
+      background: rgba(13, 110, 253, 0.18) !important;
+      color: #6ea8fe !important;
+    }
+    .custom-dropdown-item.active {
+      background: rgba(13, 110, 253, 0.3) !important;
+      color: #6ea8fe !important;
+      font-weight: 600 !important;
+    }
   </style>
 </head>
 <body class="d-flex flex-column">
@@ -481,37 +528,65 @@
         <footer class="p-3 border-top border-secondary border-opacity-25 glass-card rounded-0">
           <div class="container-fluid p-0">
             
-            <!-- Instant Mode & Provider Selector -->
-            <div class="d-flex align-items-center justify-content-between mb-2 px-1 flex-wrap gap-2">
+            <!-- Mode & Provider Selector Dropdowns -->
+            <div class="d-flex align-items-center justify-content-between mb-2.5 px-1 flex-wrap gap-2">
               <div class="d-flex align-items-center gap-2 flex-wrap">
-                <!-- Mode Selector -->
-                <div class="btn-group btn-group-sm" role="group" id="modeSelectorGroup">
-                  <button type="button" class="btn btn-outline-primary active rounded-pill me-1 px-3" data-mode="fast" id="btnModeFast">
-                    <i class="fa-solid fa-bolt me-1"></i>⚡ Fast
+                
+                <!-- Speed / Mode Dropdown -->
+                <div class="dropdown" id="modeDropdownWrapper">
+                  <button class="btn custom-dropdown-btn dropdown-toggle d-flex align-items-center gap-2" type="button" id="modeDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-bolt text-warning" id="modeIcon"></i>
+                    <span id="modeLabelText">Speed: Fast</span>
                   </button>
-                  <button type="button" class="btn btn-outline-primary rounded-pill me-1 px-3" data-mode="detailed" id="btnModeDetailed">
-                    <i class="fa-solid fa-book-open me-1"></i>📖 Detailed
-                  </button>
-                  <button type="button" class="btn btn-outline-primary rounded-pill px-3" data-mode="thinking" id="btnModeThinking">
-                    <i class="fa-solid fa-brain me-1"></i>🧠 Deep Thinking
-                  </button>
+                  <ul class="dropdown-menu custom-dropdown-menu" aria-labelledby="modeDropdownBtn" id="modeDropdownMenu">
+                    <li>
+                      <a class="dropdown-item custom-dropdown-item active" href="#" data-mode="fast">
+                        <span><i class="fa-solid fa-bolt text-warning me-2"></i>⚡ Fast Mode</span>
+                        <small class="text-secondary ms-2" style="font-size: 0.7rem;">Quick answer</small>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item custom-dropdown-item" href="#" data-mode="detailed">
+                        <span><i class="fa-solid fa-book-open text-primary me-2"></i>📖 Detailed Mode</span>
+                        <small class="text-secondary ms-2" style="font-size: 0.7rem;">In-depth RAG</small>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item custom-dropdown-item" href="#" data-mode="thinking">
+                        <span><i class="fa-solid fa-brain text-info me-2"></i>🧠 Deep Thinking</span>
+                        <small class="text-secondary ms-2" style="font-size: 0.7rem;">Reasoning loop</small>
+                      </a>
+                    </li>
+                  </ul>
                 </div>
 
-                <!-- Provider Selector (Local vs Cloud) -->
-                <div class="btn-group btn-group-sm" role="group" id="providerSelectorGroup">
-                  <button type="button" class="btn btn-outline-success active rounded-pill me-1 px-2.5" data-provider="local" id="btnProviderLocal" title="Run locally via Ollama (Gemma 4)">
-                    <i class="fa-solid fa-house-laptop me-1"></i>🏠 Local (Ollama)
+                <!-- Model / Provider Dropdown -->
+                <div class="dropdown" id="providerDropdownWrapper">
+                  <button class="btn custom-dropdown-btn dropdown-toggle d-flex align-items-center gap-2" type="button" id="providerDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fa-solid fa-house-laptop text-success" id="providerIcon"></i>
+                    <span id="providerLabelText">Model: Local Ollama</span>
                   </button>
-                  <button type="button" class="btn btn-outline-info rounded-pill px-2.5" data-provider="cloud" id="btnProviderCloud" title="Run via Cloud API (Gemini/OpenAI for fast recording)">
-                    <i class="fa-solid fa-cloud me-1"></i>☁️ Cloud API
-                  </button>
+                  <ul class="dropdown-menu custom-dropdown-menu" aria-labelledby="providerDropdownBtn" id="providerDropdownMenu">
+                    <li>
+                      <a class="dropdown-item custom-dropdown-item active" href="#" data-provider="local">
+                        <span><i class="fa-solid fa-house-laptop text-success me-2"></i>🏠 Local (Gemma 4 / Ollama)</span>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="dropdown-item custom-dropdown-item" href="#" data-provider="cloud">
+                        <span><i class="fa-solid fa-cloud text-info me-2"></i>☁️ Cloud API (Gemini / OpenAI)</span>
+                      </a>
+                    </li>
+                  </ul>
                 </div>
+
               </div>
 
               <small class="text-secondary font-monospace" style="font-size: 0.75rem;" id="modeHintText">
                 <i class="fa-solid fa-bolt text-warning me-1"></i>⚡ Fast direct response
               </small>
             </div>
+
 
 
             <form id="askForm" class="ask-input-group input-group">
@@ -1032,36 +1107,61 @@
         }
       });
 
-      // Mode & Provider Selector Logic
+      // Dropdown Selectors State & Handlers
       let currentMode = 'fast';
       let currentProvider = 'local';
 
-      const modeButtons = document.querySelectorAll('#modeSelectorGroup button');
-      const providerButtons = document.querySelectorAll('#providerSelectorGroup button');
+      const modeItems = document.querySelectorAll('#modeDropdownMenu .custom-dropdown-item');
+      const modeLabelText = document.getElementById('modeLabelText');
+      const modeIcon = document.getElementById('modeIcon');
       const modeHintText = document.getElementById('modeHintText');
 
-      const hints = {
-        fast: '<i class="fa-solid fa-bolt text-warning me-1"></i>⚡ Fast direct response',
-        detailed: '<i class="fa-solid fa-book-open text-primary me-1"></i>📖 Detailed paragraphs & bullet points',
-        thinking: '<i class="fa-solid fa-brain text-info me-1"></i>🧠 Deep Reasoning loop enabled'
+      const modeConfigs = {
+        fast: { label: 'Speed: Fast', icon: 'fa-solid fa-bolt text-warning', hint: '<i class="fa-solid fa-bolt text-warning me-1"></i>⚡ Fast direct response' },
+        detailed: { label: 'Speed: Detailed', icon: 'fa-solid fa-book-open text-primary', hint: '<i class="fa-solid fa-book-open text-primary me-1"></i>📖 Detailed paragraphs & bullet points' },
+        thinking: { label: 'Speed: Deep Thinking', icon: 'fa-solid fa-brain text-info', hint: '<i class="fa-solid fa-brain text-info me-1"></i>🧠 Deep Reasoning loop enabled' }
       };
 
-      modeButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          modeButtons.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          currentMode = btn.getAttribute('data-mode');
-          modeHintText.innerHTML = hints[currentMode] || '';
+      modeItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.preventDefault();
+          modeItems.forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+          currentMode = item.getAttribute('data-mode');
+
+          const config = modeConfigs[currentMode];
+          if (config) {
+            modeLabelText.textContent = config.label;
+            modeIcon.className = config.icon;
+            modeHintText.innerHTML = config.hint;
+          }
         });
       });
 
-      providerButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          providerButtons.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          currentProvider = btn.getAttribute('data-provider');
+      const providerItems = document.querySelectorAll('#providerDropdownMenu .custom-dropdown-item');
+      const providerLabelText = document.getElementById('providerLabelText');
+      const providerIcon = document.getElementById('providerIcon');
+
+      const providerConfigs = {
+        local: { label: 'Model: Local Ollama', icon: 'fa-solid fa-house-laptop text-success' },
+        cloud: { label: 'Model: Cloud API', icon: 'fa-solid fa-cloud text-info' }
+      };
+
+      providerItems.forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.preventDefault();
+          providerItems.forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+          currentProvider = item.getAttribute('data-provider');
+
+          const config = providerConfigs[currentProvider];
+          if (config) {
+            providerLabelText.textContent = config.label;
+            providerIcon.className = config.icon;
+          }
         });
       });
+
 
       // Track active EventSource instance globally across queries
       let activeEvtSource = null;
