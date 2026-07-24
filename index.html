@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyclUp - Intelligence Vault & Ask Engine</title>
+
+  <!-- Bootstrap 5 CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+  <!-- FontAwesome 6 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #121212;
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --card-bg-hover: rgba(255, 255, 255, 0.06);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --accent-glow: rgba(13, 110, 253, 0.15);
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      color: #e0e0e0;
+    }
+
+    /* Custom Glassmorphism Utilities */
+    .glass-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      transition: all 0.2s ease-in-out;
+    }
+
+    .glass-card-hover:hover {
+      background: var(--card-bg-hover);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Dashed Upload Zone */
+    .drop-zone {
+      border: 2px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      padding: 1.75rem 1rem;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .drop-zone:hover {
+      border-color: #0d6efd;
+      background: var(--accent-glow);
+    }
+
+    /* Custom Dark Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Massive Input Group Styling */
+    .ask-input-group .form-control {
+      background: rgba(20, 20, 20, 0.8) !important;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-size: 1.1rem;
+      padding: 1rem 1.25rem;
+      border-radius: 14px 0 0 14px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .ask-input-group .form-control:focus {
+      border-color: #0d6efd;
+      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    .ask-input-group .btn-ask {
+      border-radius: 0 14px 14px 0;
+      padding: 0 1.75rem;
+      font-weight: 600;
+      font-size: 1.05rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Accordion Dark Tweaks */
+    .accordion-item {
+      background-color: rgba(255, 255, 255, 0.02) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+    .accordion-button {
+      background-color: rgba(255, 255, 255, 0.04) !important;
+      color: #e0e0e0 !important;
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+    .accordion-button:not(.collapsed) {
+      background-color: rgba(13, 110, 253, 0.15) !important;
+      color: #6ea8fe !important;
+      box-shadow: none !important;
+    }
+    .accordion-button::after {
+      filter: invert(0.8);
+    }
+
+    /* Badges */
+    .badge-tag {
+      background-color: rgba(255, 255, 255, 0.08);
+      color: #b0b0b0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-weight: 500;
+    }
+
+    /* Custom nav tab styling */
+    .nav-tabs {
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+    .nav-tabs .nav-link {
+      color: #999;
+      border: none;
+      font-weight: 500;
+      font-size: 0.9rem;
+      padding: 0.5rem 0.85rem;
+    }
+    .nav-tabs .nav-link.active {
+      color: #6ea8fe;
+      background: transparent;
+      border-bottom: 2px solid #0d6efd;
+    }
+    .nav-tabs .nav-link:hover:not(.active) {
+      color: #ccc;
+      border-color: transparent;
+    }
+  </style>
+</head>
+<body class="d-flex flex-column">
+
+  <div class="container-fluid h-100 p-0">
+    <div class="row g-0 h-100">
+
+      <!-- LEFT COLUMN: Sidebar (col-md-4) -->
+      <aside class="col-md-4 col-lg-4 d-flex flex-column h-100 p-3 border-end border-secondary border-opacity-25" style="background-color: #18181c;">
+        
+        <!-- App Header / Logo -->
+        <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+          <div class="d-flex align-items-center gap-2">
+            <div class="bg-primary bg-gradient rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+              <i class="fa-solid fa-cube text-white fs-5"></i>
+            </div>
+            <div>
+              <h5 class="mb-0 fw-bold tracking-tight text-white">CyclUp Vault</h5>
+              <small class="text-secondary" style="font-size: 0.75rem;">Intelligence Hub v2.4</small>
+            </div>
+          </div>
+          <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 rounded-pill">
+            <i class="fa-solid fa-circle me-1" style="font-size: 0.5rem;"></i> Active
+          </span>
+        </div>
+
+        <!-- NEW DUMP CARD -->
+        <div class="card glass-card mb-3 shadow-sm">
+          <div class="card-header bg-transparent border-bottom border-white border-opacity-10 pb-0 pt-3 px-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="card-title mb-0 fw-semibold text-white">
+                <i class="fa-solid fa-cloud-arrow-up text-primary me-2"></i>New Dump
+              </h6>
+              <span class="badge text-bg-dark border border-secondary border-opacity-25" style="font-size: 0.7rem;">Auto-indexed</span>
+            </div>
+            
+            <!-- Nav Tabs -->
+            <ul class="nav nav-tabs card-header-tabs mt-2" id="dumpTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-pane" type="button" role="tab">
+                  <i class="fa-solid fa-font me-1"></i>Text
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="doc-tab" data-bs-toggle="tab" data-bs-target="#doc-pane" type="button" role="tab">
+                  <i class="fa-solid fa-file-lines me-1"></i>Document
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="image-tab" data-bs-toggle="tab" data-bs-target="#image-pane" type="button" role="tab">
+                  <i class="fa-solid fa-image me-1"></i>Image
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="card-body p-3">
+            <div class="tab-content" id="dumpTabsContent">
+              
+              <!-- Tab 1: Text -->
+              <div class="tab-pane fade show active" id="text-pane" role="tabpanel" tabindex="0">
+                <div class="mb-2">
+                  <textarea class="form-control bg-dark text-light border-secondary border-opacity-25" rows="3" placeholder="Paste notes, snippets, raw insights, or meeting summaries..."></textarea>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                  <input type="text" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-25 w-50" placeholder="Tags (e.g. #sales)">
+                  <button class="btn btn-sm btn-primary px-3">
+                    <i class="fa-solid fa-plus me-1"></i>Dump Text
+                  </button>
+                </div>
+              </div>
+
+              <!-- Tab 2: Document -->
+              <div class="tab-pane fade" id="doc-pane" role="tabpanel" tabindex="0">
+                <div class="drop-zone mb-2">
+                  <i class="fa-solid fa-file-pdf text-primary fs-3 mb-2"></i>
+                  <p class="mb-1 fw-medium text-light style-sm" style="font-size: 0.9rem;">Drag & Drop files here</p>
+                  <small class="text-secondary d-block mb-2">Supports .pdf, .docx, .txt (Max 50MB)</small>
+                  <button class="btn btn-xs btn-outline-light rounded-pill px-3 py-1 style-xs" style="font-size: 0.75rem;">
+                    Browse Files
+                  </button>
+                </div>
+                <div class="d-flex justify-content-end">
+                  <button class="btn btn-sm btn-primary px-3">
+                    <i class="fa-solid fa-upload me-1"></i>Process Doc
+                  </button>
+                </div>
+              </div>
+
+              <!-- Tab 3: Image -->
+              <div class="tab-pane fade" id="image-pane" role="tabpanel" tabindex="0">
+                <div class="drop-zone mb-2">
+                  <i class="fa-solid fa-file-image text-info fs-3 mb-2"></i>
+                  <p class="mb-1 fw-medium text-light" style="font-size: 0.9rem;">Drag & Drop image files</p>
+                  <small class="text-secondary d-block mb-2">Supports .jpg, .png (OCR Auto-extract)</small>
+                  <button class="btn btn-xs btn-outline-light rounded-pill px-3 py-1" style="font-size: 0.75rem;">
+                    Browse Images
+                  </button>
+                </div>
+                <div class="d-flex justify-content-end">
+                  <button class="btn btn-sm btn-primary px-3">
+                    <i class="fa-solid fa-eye me-1"></i>Scan & Dump
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- RECENT DUMPS IN VAULT LIST -->
+        <div class="d-flex align-items-center justify-content-between mb-2 px-1">
+          <span class="text-uppercase text-secondary fw-bold" style="font-size: 0.75rem; letter-spacing: 0.05em;">
+            <i class="fa-solid fa-database me-1"></i>Recent Dumps in Vault
+          </span>
+          <span class="badge bg-secondary bg-opacity-25 text-secondary rounded-pill">12 Total</span>
+        </div>
+
+        <div class="flex-grow-1 overflow-y-autope-1">
+          <div class="list-group list-group-flush gap-2">
+            
+            <!-- List Item 1 -->
+            <a href="#" class="list-group-item list-group-item-action glass-card glass-card-hover border-0 p-2.5 rounded-3 text-light">
+              <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                <h6 class="mb-0 text-white fw-semibold text-truncate style-sm" style="font-size: 0.9rem; max-width: 200px;">
+                  Q3 Financial Audit Specs.pdf
+                </h6>
+                <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-25 rounded-pill" style="font-size: 0.65rem;">
+                  PDF
+                </span>
+              </div>
+              <p class="mb-2 text-secondary text-truncate" style="font-size: 0.8rem;">
+                Quarterly budget allocations, cost targets, and vendor contracts.
+              </p>
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex gap-1">
+                  <span class="badge badge-tag rounded-pill" style="font-size: 0.65rem;">#finance</span>
+                  <span class="badge badge-tag rounded-pill" style="font-size: 0.65rem;">#audit</span>
+                </div>
+                <small class="text-secondary" style="font-size: 0.7rem;"><i class="fa-regular fa-clock me-1"></i>10m ago</small>
+              </div>
+            </a>
+
+            <!-- List Item 2 -->
+            <a href="#" class="list-group-item list-group-item-action glass-card glass-card-hover border-0 p-2.5 rounded-3 text-light">
+              <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                <h6 class="mb-0 text-white fw-semibold text-truncate" style="font-size: 0.9rem; max-width: 200px;">
+                  API Architecture Blueprint.docx
+                </h6>
+                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 rounded-pill" style="font-size: 0.65rem;">
+                  DOCX
+                </span>
+              </div>
+              <p class="mb-2 text-secondary text-truncate" style="font-size: 0.8rem;">
+                Microservices schema specs, authentication tokens, and rate limits.
+              </p>
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex gap-1">
+                  <span class="badge badge-tag rounded-pill" style="font-size: 0.65rem;">#tech</span>
+                  <span class="badge badge-tag rounded-pill" style="font-size: 0.65rem;">#backend</span>
+                </div>
+                <small class="text-secondary" style="font-size: 0.7rem;"><i class="fa-regular fa-clock me-1"></i>2h ago</small>
+              </div>
+            </a>
+
+            <!-- List Item 3 -->
+            <a href="#" class="list-group-item list-group-item-action glass-card glass-card-hover border-0 p-2.5 rounded-3 text-light">
+              <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                <h6 class="mb-0 text-white fw-semibold text-truncate" style="font-size: 0.9rem; max-width: 200px;">
+                  Whiteboard Brainstorming.png
+                </h6>
+                <span class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-25 rounded-pill" style="font-size: 0.65rem;">
+                  PNG
+                </span>
+              </div>
+              <p class="mb-2 text-secondary text-truncate" style="font-size: 0.8rem;">
+                Handwritten notes from product roadmap strategy session.
+              </p>
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex gap-1">
+                  <span class="badge badge-tag rounded-pill" style="font-size: 0.65rem;">#ocr</span>
+                  <span class="badge badge-tag rounded-pill" style="font-size: 0.65rem;">#ux</span>
+                </div>
+                <small class="text-secondary" style="font-size: 0.7rem;"><i class="fa-regular fa-clock me-1"></i>Yesterday</small>
+              </div>
+            </a>
+
+            <!-- List Item 4 -->
+            <a href="#" class="list-group-item list-group-item-action glass-card glass-card-hover border-0 p-2.5 rounded-3 text-light">
+              <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                <h6 class="mb-0 text-white fw-semibold text-truncate" style="font-size: 0.9rem; max-width: 200px;">
+                  Customer Feedback Raw.txt
+                </h6>
+                <span class="badge bg-secondary bg-opacity-25 text-secondary border border-secondary border-opacity-25 rounded-pill" style="font-size: 0.65rem;">
+                  TXT
+                </span>
+              </div>
+              <p class="mb-2 text-secondary text-truncate" style="font-size: 0.8rem;">
+                Transcript of 15 user interview calls from July cohort.
+              </p>
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex gap-1">
+                  <span class="badge badge-tag rounded-pill" style="font-size: 0.65rem;">#research</span>
+                </div>
+                <small class="text-secondary" style="font-size: 0.7rem;"><i class="fa-regular fa-clock me-1"></i>3 days ago</small>
+              </div>
+            </a>
+
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- RIGHT COLUMN: Ask Engine (col-md-8) -->
+      <main class="col-md-8 col-lg-8 d-flex flex-column h-100 bg-dark position-relative" style="background: radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.03) 0%, rgba(18, 18, 18, 1) 70%);">
+        
+        <!-- Header Bar -->
+        <header class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom border-secondary border-opacity-25 glass-card rounded-0">
+          <div class="d-flex align-items-center gap-3">
+            <h5 class="mb-0 fw-bold text-white"><i class="fa-solid fa-wand-magic-sparkles text-primary me-2"></i>Ask Engine</h5>
+            <span class="badge bg-primary bg-opacity-20 text-primary border border-primary border-opacity-25 px-2.5 py-1">
+              RAG Model 4.0
+            </span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" title="Clear Chat">
+              <i class="fa-solid fa-rotate-left me-1"></i> Reset
+            </button>
+            <button class="btn btn-sm btn-outline-light rounded-circle" style="width: 32px; height: 32px;" title="Settings">
+              <i class="fa-solid fa-gear"></i>
+            </button>
+          </div>
+        </header>
+
+        <!-- Scrollable Results Area -->
+        <section class="flex-grow-1 overflow-y-auto p-4 d-flex flex-column gap-4">
+
+          <!-- DEMO STATE 1: Grounded Answer State -->
+          <div class="card glass-card p-3 shadow-sm border-start border-success border-4">
+            <div class="card-body p-1">
+              
+              <!-- State Header / Alert -->
+              <div class="alert alert-success d-flex align-items-center justify-content-between mb-3 bg-success bg-opacity-15 border-success border-opacity-25 text-success py-2 px-3 rounded-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-circle-check fs-5"></i>
+                  <span class="fw-semibold">✅ Confirmed by multiple dumps</span>
+                </div>
+                <small class="text-success text-opacity-75 font-monospace" style="font-size: 0.75rem;">Latency: 0.18s</small>
+              </div>
+
+              <!-- Query Context -->
+              <div class="text-secondary small mb-2">
+                <i class="fa-solid fa-circle-question me-1 text-primary"></i> Query: <span class="text-light italic">"What is the projected Q3 marketing budget allocation?"</span>
+              </div>
+
+              <!-- Answer Content -->
+              <div class="mb-3 text-light leading-relaxed">
+                The overall projected marketing budget for <strong>Q3 2026 is $450,000</strong>. This represents a 12% increase compared to Q2, allocated primarily towards paid search campaigns (40%), social media influencer partnerships (35%), and regional event sponsorships (25%).
+              </div>
+
+              <!-- Bootstrap Accordion for Source Citations -->
+              <div class="accordion" id="accordionGrounded">
+                <div class="accordion-item rounded-3 overflow-hidden">
+                  <h2 class="accordion-header">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCitations" aria-expanded="false" aria-controls="collapseCitations">
+                      <i class="fa-solid fa-quote-left text-primary me-2"></i> View Source Citations (3 Grounded Sources)
+                    </button>
+                  </h2>
+                  <div id="collapseCitations" class="accordion-collapse collapse" data-bs-parent="#accordionGrounded">
+                    <div class="accordion-body text-secondary small pt-3">
+                      <div class="list-group list-group-flush gap-2">
+                        
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                          <div class="d-flex justify-content-between fw-semibold text-light mb-1">
+                            <span><i class="fa-solid fa-file-pdf text-danger me-1"></i> Source 1: sample.pdf (Page 87)</span>
+                            <span class="text-success font-monospace" style="font-size: 0.75rem;">98.4% Match</span>
+                          </div>
+                          <p class="mb-0 text-secondary style-italic">"...Total Q3 allocation approved at $450k across core growth vectors..."</p>
+                        </div>
+
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                          <div class="d-flex justify-content-between fw-semibold text-light mb-1">
+                            <span><i class="fa-solid fa-file-word text-primary me-1"></i> Source 2: Q3_Marketing_Strategy.docx (Section 4.1)</span>
+                            <span class="text-success font-monospace" style="font-size: 0.75rem;">94.1% Match</span>
+                          </div>
+                          <p class="mb-0 text-secondary style-italic">"...Paid search receives $180k (40%), social receives $157.5k (35%)..."</p>
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- DEMO STATE 2: Conflict Alert State -->
+          <div class="card glass-card p-3 shadow-sm border-start border-warning border-4">
+            <div class="card-body p-1">
+              
+              <!-- State Header / Alert -->
+              <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3 bg-warning bg-opacity-15 border-warning border-opacity-25 text-warning py-2 px-3 rounded-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-triangle-exclamation fs-5"></i>
+                  <span class="fw-semibold">⚠️ Conflicting Dumps Detected</span>
+                </div>
+                <small class="text-warning text-opacity-75 font-monospace" style="font-size: 0.75rem;">Latency: 0.24s</small>
+              </div>
+
+              <!-- Query Context -->
+              <div class="text-secondary small mb-2">
+                <i class="fa-solid fa-circle-question me-1 text-primary"></i> Query: <span class="text-light">"What is the official release date for v3.0 release candidate?"</span>
+              </div>
+
+              <!-- Conflict Details Box -->
+              <div class="p-3 rounded-3 mb-3 bg-dark bg-opacity-50 border border-warning border-opacity-25">
+                <p class="text-light mb-2">
+                  Two contradictory timestamps were discovered across your ingested dumps:
+                </p>
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <div class="p-2 rounded bg-black bg-opacity-40 border border-secondary border-opacity-25 h-100">
+                      <div class="fw-semibold text-warning mb-1" style="font-size: 0.85rem;">
+                        <i class="fa-regular fa-file-text me-1"></i> Source 1 (Monday)
+                      </div>
+                      <small class="text-light d-block mb-1"><code>roadmap_v3_draft.txt</code></small>
+                      <small class="text-secondary">States release candidate target is <strong>August 15th, 2026</strong>.</small>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="p-2 rounded bg-black bg-opacity-40 border border-secondary border-opacity-25 h-100">
+                      <div class="fw-semibold text-info mb-1" style="font-size: 0.85rem;">
+                        <i class="fa-regular fa-file-word me-1"></i> Source 2 (Wednesday)
+                      </div>
+                      <small class="text-light d-block mb-1"><code>executive_sync_notes.docx</code></small>
+                      <small class="text-secondary">Pushed release candidate target to <strong>September 1st, 2026</strong>.</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <small class="text-secondary d-block">
+                <i class="fa-solid fa-lightbulb text-warning me-1"></i> Recommended Action: Please verify which dump takes precedence or upload a new dump to resolve.
+              </small>
+
+            </div>
+          </div>
+
+          <!-- DEMO STATE 3: Refusal State -->
+          <div class="card glass-card p-3 shadow-sm border-start border-danger border-4">
+            <div class="card-body p-1">
+              
+              <!-- State Header / Alert -->
+              <div class="alert alert-danger d-flex align-items-center justify-content-between mb-2 bg-danger bg-opacity-15 border-danger border-opacity-25 text-danger py-2 px-3 rounded-3" role="alert">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-circle-xmark fs-5"></i>
+                  <span class="fw-semibold">I don't have that information in what's been dumped here.</span>
+                </div>
+                <small class="text-danger text-opacity-75 font-monospace" style="font-size: 0.75rem;">Latency: 0.0s</small>
+              </div>
+
+              <!-- Query Context -->
+              <div class="text-secondary small mb-2">
+                <i class="fa-solid fa-circle-question me-1 text-primary"></i> Query: <span class="text-light">"What are the employee wifi passwords for the Tokyo branch office?"</span>
+              </div>
+
+              <p class="text-secondary mb-0 style-sm" style="font-size: 0.875rem;">
+                No matching vectors or indexed context found across 12 active dumps in your vault. Hallucination guardrails prevented an artificial response.
+              </p>
+
+            </div>
+          </div>
+
+        </section>
+
+        <!-- Pinned Search Input Group at Bottom -->
+        <footer class="p-3 border-top border-secondary border-opacity-25 glass-card rounded-0">
+          <div class="container-fluid p-0">
+            <form onsubmit="return false;" class="ask-input-group input-group">
+              <span class="input-group-text bg-dark border-secondary border-opacity-25 text-secondary pe-0">
+                <i class="fa-solid fa-magnifying-glass fs-5"></i>
+              </span>
+              <input type="text" class="form-control border-start-0" placeholder="Ask anything across your dumps... (e.g. 'Summarize Q3 targets')" aria-label="Ask Engine Query">
+              <button class="btn btn-primary btn-ask d-flex align-items-center gap-2" type="submit">
+                <span>Ask</span>
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </form>
+            <div class="d-flex justify-content-between align-items-center mt-2 px-2">
+              <small class="text-secondary" style="font-size: 0.75rem;">
+                <i class="fa-solid fa-shield-halved text-success me-1"></i> Zero external data leaks • Strict RAG Verification
+              </small>
+              <small class="text-secondary font-monospace" style="font-size: 0.75rem;">
+                Press <kbd class="bg-secondary bg-opacity-25 text-light border-0 px-1">Enter ↵</kbd> to query
+              </small>
+            </div>
+          </div>
+        </footer>
+
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS Bundle CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+</body>
+</html>

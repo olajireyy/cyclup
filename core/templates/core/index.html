@@ -1,0 +1,978 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CyclUp - Intelligence Vault & Ask Engine</title>
+
+  <!-- Bootstrap 5 CSS CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+  <!-- FontAwesome 6 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #121212;
+      --sidebar-bg: #18181c;
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --card-bg-hover: rgba(255, 255, 255, 0.06);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --accent-glow: rgba(13, 110, 253, 0.15);
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      color: #e0e0e0;
+    }
+
+    /* Custom Glassmorphism Utilities */
+    .glass-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      transition: all 0.2s ease-in-out;
+    }
+
+    .glass-card-hover:hover {
+      background: var(--card-bg-hover);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Dashed Upload Zone */
+    .drop-zone {
+      border: 2px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #0d6efd;
+      background: var(--accent-glow);
+    }
+
+    .drop-zone input[type="file"] {
+      display: none;
+    }
+
+    /* Custom Dark Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Massive Input Group Styling */
+    .ask-input-group .form-control {
+      background: rgba(20, 20, 20, 0.8) !important;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-size: 1rem;
+      padding: 0.85rem 1.25rem;
+      border-radius: 14px 0 0 14px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .ask-input-group .form-control:focus {
+      border-color: #0d6efd;
+      box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    .ask-input-group .btn-ask {
+      border-radius: 0 14px 14px 0;
+      padding: 0 1.75rem;
+      font-weight: 600;
+      font-size: 1rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Accordion Dark Tweaks */
+    .accordion-item {
+      background-color: rgba(255, 255, 255, 0.02) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+    .accordion-button {
+      background-color: rgba(255, 255, 255, 0.04) !important;
+      color: #e0e0e0 !important;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    .accordion-button:not(.collapsed) {
+      background-color: rgba(13, 110, 253, 0.15) !important;
+      color: #6ea8fe !important;
+      box-shadow: none !important;
+    }
+    .accordion-button::after {
+      filter: invert(0.8);
+    }
+
+    /* Badges */
+    .badge-tag {
+      background-color: rgba(255, 255, 255, 0.08);
+      color: #b0b0b0;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-weight: 500;
+    }
+
+    /* Custom nav tab styling */
+    .nav-tabs {
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+    .nav-tabs .nav-link {
+      color: #999;
+      border: none;
+      font-weight: 500;
+      font-size: 0.85rem;
+      padding: 0.5rem 0.85rem;
+    }
+    .nav-tabs .nav-link.active {
+      color: #6ea8fe;
+      background: transparent;
+      border-bottom: 2px solid #0d6efd;
+    }
+    .nav-tabs .nav-link:hover:not(.active) {
+      color: #ccc;
+      border-color: transparent;
+    }
+
+    /* Gemma Status Indicator */
+    .gemma-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 0.75rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+      transition: all 0.4s ease;
+      margin-bottom: 0.75rem;
+    }
+    .gemma-status .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .gemma-status.connected {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+    .gemma-status.connected .status-dot {
+      background: #10b981;
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    .gemma-status.disconnected {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+    .gemma-status.disconnected .status-dot {
+      background: #ef4444;
+      box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
+    }
+    .gemma-status.checking {
+      background: rgba(250, 204, 21, 0.12);
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      color: #fbbf24;
+    }
+    .gemma-status.checking .status-dot {
+      background: #f59e0b;
+      animation: pulse-dot 0.8s ease-in-out infinite;
+    }
+    .gemma-status .status-detail {
+      color: #94a3b8;
+      font-size: 0.7rem;
+      margin-left: auto;
+      font-family: monospace;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* Loader Overlay */
+    .loader-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(18, 18, 18, 0.85);
+      backdrop-filter: blur(4px);
+      border-radius: 12px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+    }
+
+    .toast-container {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1055;
+    }
+  </style>
+</head>
+<body class="d-flex flex-column">
+  {% csrf_token %}
+
+  <div class="container-fluid h-100 p-0">
+    <div class="row g-0 h-100">
+
+      <!-- LEFT COLUMN: Sidebar (col-md-4) -->
+      <aside class="col-md-4 col-lg-4 d-flex flex-column h-100 p-3 border-end border-secondary border-opacity-25" style="background-color: var(--sidebar-bg);">
+        
+        <!-- App Header / Logo -->
+        <div class="d-flex align-items-center justify-content-between mb-2 px-1">
+          <div class="d-flex align-items-center gap-2">
+            <div class="bg-primary bg-gradient rounded-3 p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+              <i class="fa-solid fa-cube text-white fs-5"></i>
+            </div>
+            <div>
+              <h5 class="mb-0 fw-bold tracking-tight text-white">CyclUp Vault</h5>
+              <small class="text-secondary" style="font-size: 0.75rem;">Intelligence Hub v2.4</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Gemma Status Indicator -->
+        <div class="gemma-status checking" id="gemmaStatus">
+          <div class="status-dot"></div>
+          <span id="gemmaStatusText">Checking Ollama...</span>
+          <span class="status-detail" id="gemmaStatusDetail"></span>
+        </div>
+
+        <!-- NEW DUMP CARD -->
+        <div class="card glass-card mb-3 shadow-sm position-relative">
+          <!-- Loading Overlay for Tab Forms -->
+          <div class="loader-overlay" id="dumpLoader">
+            <div class="text-center">
+              <div class="spinner-border text-primary" role="status"></div>
+              <div class="mt-2 text-primary fw-medium" style="font-size: 0.85rem;" id="dumpLoaderText">Processing...</div>
+            </div>
+          </div>
+
+          <div class="card-header bg-transparent border-bottom border-white border-opacity-10 pb-0 pt-3 px-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="card-title mb-0 fw-semibold text-white">
+                <i class="fa-solid fa-cloud-arrow-up text-primary me-2"></i>New Dump
+              </h6>
+              <span class="badge text-bg-dark border border-secondary border-opacity-25" style="font-size: 0.7rem;">Auto-indexed</span>
+            </div>
+            
+            <!-- Nav Tabs -->
+            <ul class="nav nav-tabs card-header-tabs mt-2" id="dumpTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-pane" type="button" role="tab">
+                  <i class="fa-solid fa-font me-1"></i>Text
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="doc-tab" data-bs-toggle="tab" data-bs-target="#doc-pane" type="button" role="tab">
+                  <i class="fa-solid fa-file-lines me-1"></i>Document
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="image-tab" data-bs-toggle="tab" data-bs-target="#image-pane" type="button" role="tab">
+                  <i class="fa-solid fa-image me-1"></i>Image
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <div class="card-body p-3">
+            <div class="tab-content" id="dumpTabsContent">
+              
+              <!-- Tab 1: Text -->
+              <div class="tab-pane fade show active" id="text-pane" role="tabpanel" tabindex="0">
+                <form id="textDumpForm">
+                  <div class="mb-2">
+                    <textarea class="form-control bg-dark text-light border-secondary border-opacity-25" id="text_rawText" rows="3" placeholder="Paste notes, snippets, raw insights, or meeting summaries..." required></textarea>
+                  </div>
+                  <div class="mb-2">
+                    <input type="text" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-25" id="text_sourceName" placeholder="Source Name (e.g. VC Memo, SUG Rules)" required>
+                  </div>
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <input type="text" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-25" id="text_courseCode" placeholder="Topic / Category">
+                    </div>
+                    <div class="col-6">
+                      <input type="text" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-25" id="text_tags" placeholder="Tags (comma separated)">
+                    </div>
+                  </div>
+                  <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-sm btn-primary px-3">
+                      <i class="fa-solid fa-plus me-1"></i>Dump Text
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Tab 2: Document -->
+              <div class="tab-pane fade" id="doc-pane" role="tabpanel" tabindex="0">
+                <form id="docDumpForm">
+                  <div class="drop-zone mb-2" id="docDropZone">
+                    <i class="fa-solid fa-file-pdf text-primary fs-3 mb-2"></i>
+                    <p class="mb-1 fw-medium text-light" style="font-size: 0.85rem;">Drag & Drop files here</p>
+                    <small class="text-secondary d-block mb-2">Supports .pdf, .docx, .txt (Max 50MB)</small>
+                    <button type="button" class="btn btn-xs btn-outline-light rounded-pill px-3 py-1" style="font-size: 0.75rem;">
+                      Browse Files
+                    </button>
+                    <input type="file" id="doc_file" accept=".pdf,.docx,.txt" required>
+                  </div>
+                  <div id="doc_fileName" class="text-success fs-7 mb-2 text-center fw-medium" style="display: none; font-size: 0.8rem;"></div>
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <input type="text" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-25" id="doc_courseCode" placeholder="Topic / Category">
+                    </div>
+                    <div class="col-6">
+                      <input type="text" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-25" id="doc_tags" placeholder="Tags (comma separated)">
+                    </div>
+                  </div>
+                  <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-sm btn-primary px-3" id="docSubmitBtn" disabled>
+                      <i class="fa-solid fa-upload me-1"></i>Process Doc
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <!-- Tab 3: Image -->
+              <div class="tab-pane fade" id="image-pane" role="tabpanel" tabindex="0">
+                <form id="imgDumpForm">
+                  <div class="drop-zone mb-2" id="imgDropZone">
+                    <i class="fa-solid fa-file-image text-info fs-3 mb-2"></i>
+                    <p class="mb-1 fw-medium text-light" style="font-size: 0.85rem;">Drag & Drop image files</p>
+                    <small class="text-secondary d-block mb-2">Supports .jpg, .png (RapidOCR / Gemma)</small>
+                    <button type="button" class="btn btn-xs btn-outline-light rounded-pill px-3 py-1" style="font-size: 0.75rem;">
+                      Browse Images
+                    </button>
+                    <input type="file" id="img_file" accept=".jpg,.jpeg,.png" required>
+                  </div>
+                  <div id="img_fileName" class="text-success fs-7 mb-2 text-center fw-medium" style="display: none; font-size: 0.8rem;"></div>
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <input type="text" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-25" id="img_courseCode" placeholder="Topic / Category">
+                    </div>
+                    <div class="col-6">
+                      <input type="text" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-25" id="img_tags" placeholder="Tags (comma separated)">
+                    </div>
+                  </div>
+                  <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-sm btn-primary px-3" id="imgSubmitBtn" disabled>
+                      <i class="fa-solid fa-eye me-1"></i>Scan & Dump
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- RECENT DUMPS IN VAULT LIST -->
+        <div class="d-flex align-items-center justify-content-between mb-2 px-1">
+          <span class="text-uppercase text-secondary fw-bold" style="font-size: 0.75rem; letter-spacing: 0.05em;">
+            <i class="fa-solid fa-database me-1"></i>Recent Dumps in Vault
+          </span>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-secondary bg-opacity-25 text-secondary rounded-pill" id="dumpsTotalBadge">Loading...</span>
+            <button class="btn btn-sm btn-link text-secondary p-0" onclick="loadRecentDumps()" title="Refresh"><i class="fa-solid fa-rotate-right"></i></button>
+          </div>
+        </div>
+
+        <div class="flex-grow-1 overflow-y-auto pe-1" id="recentDumpsContainer">
+          <div class="text-center text-muted fs-7 py-3">Loading dumps...</div>
+        </div>
+
+      </aside>
+
+      <!-- RIGHT COLUMN: Ask Engine (col-md-8) -->
+      <main class="col-md-8 col-lg-8 d-flex flex-column h-100 bg-dark position-relative" style="background: radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.03) 0%, rgba(18, 18, 18, 1) 70%);">
+        
+        <!-- Header Bar -->
+        <header class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom border-secondary border-opacity-25 glass-card rounded-0">
+          <div class="d-flex align-items-center gap-3">
+            <h5 class="mb-0 fw-bold text-white"><i class="fa-solid fa-wand-magic-sparkles text-primary me-2"></i>Ask Engine</h5>
+            <span class="badge bg-primary bg-opacity-20 text-primary border border-primary border-opacity-25 px-2.5 py-1">
+              Gemma 4 Corroborator
+            </span>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" id="resetBtn" title="Clear Chat">
+              <i class="fa-solid fa-rotate-left me-1"></i> Reset
+            </button>
+          </div>
+        </header>
+
+        <!-- Scrollable Results Area -->
+        <section class="flex-grow-1 overflow-y-auto p-4 d-flex flex-column gap-4 position-relative" id="resultsArea">
+          <div class="text-center text-secondary my-auto py-5">
+            <i class="fa-solid fa-wand-magic-sparkles fs-1 mb-3 text-primary opacity-50"></i>
+            <h5 class="text-white">Ready to Query Vault</h5>
+            <p class="small text-muted" style="max-width: 480px; margin: 0 auto;">Ask any campus question below. The engine searches retrieved dumps, verifies corroboration, and returns grounded answers with zero external data leaks.</p>
+          </div>
+
+          <!-- Loading Overlay for Ask Engine -->
+          <div class="loader-overlay" id="askLoader">
+            <div class="text-center">
+              <div class="spinner-grow text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+              <div class="mt-3 text-primary fw-medium">Searching Vault & Corroborating...</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Pinned Search Input Group at Bottom -->
+        <footer class="p-3 border-top border-secondary border-opacity-25 glass-card rounded-0">
+          <div class="container-fluid p-0">
+            <form id="askForm" class="ask-input-group input-group">
+              <span class="input-group-text bg-dark border-secondary border-opacity-25 text-secondary pe-0">
+                <i class="fa-solid fa-magnifying-glass fs-5"></i>
+              </span>
+              <input type="text" class="form-control border-start-0" id="askInput" placeholder="Ask anything across campus dumps (e.g. exam dates, hostel fees, lecturer names)..." aria-label="Ask Engine Query" autocomplete="off" required>
+              <button class="btn btn-primary btn-ask d-flex align-items-center gap-2" type="submit">
+                <span>Ask</span>
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </form>
+            <div class="d-flex justify-content-between align-items-center mt-2 px-2">
+              <small class="text-secondary" style="font-size: 0.75rem;">
+                <i class="fa-solid fa-shield-halved text-success me-1"></i> Zero external data leaks • Strict RAG Verification
+              </small>
+              <small class="text-secondary font-monospace" style="font-size: 0.75rem;">
+                Press <kbd class="bg-secondary bg-opacity-25 text-light border-0 px-1">Enter ↵</kbd> to query
+              </small>
+            </div>
+          </div>
+        </footer>
+
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div class="toast-container">
+    <div id="appToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="toastMessage">Action successful.</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 JS Bundle CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      
+      // UI Elements
+      const recentDumpsContainer = document.getElementById('recentDumpsContainer');
+      const dumpsTotalBadge = document.getElementById('dumpsTotalBadge');
+      const resultsArea = document.getElementById('resultsArea');
+      const askForm = document.getElementById('askForm');
+      const askInput = document.getElementById('askInput');
+      const resetBtn = document.getElementById('resetBtn');
+      const toastEl = document.getElementById('appToast');
+      const toast = new bootstrap.Toast(toastEl);
+      
+      // Helper: Show Toast
+      function showToast(message, type = 'success') {
+        document.getElementById('toastMessage').textContent = message;
+        toastEl.className = `toast align-items-center text-bg-${type} border-0`;
+        toast.show();
+      }
+
+      // Helper: Format Time Ago
+      function timeAgo(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+        
+        let interval = seconds / 31536000;
+        if (interval > 1) return Math.floor(interval) + "y ago";
+        interval = seconds / 2592000;
+        if (interval > 1) return Math.floor(interval) + "mo ago";
+        interval = seconds / 86400;
+        if (interval > 1) return Math.floor(interval) + "d ago";
+        interval = seconds / 3600;
+        if (interval > 1) return Math.floor(interval) + "h ago";
+        interval = seconds / 60;
+        if (interval > 1) return Math.floor(interval) + "m ago";
+        return Math.floor(seconds) + "s ago";
+      }
+
+      // Helper: Badge color mapping for 5500 style
+      function getBadgeStyle(type) {
+        const t = String(type).toLowerCase();
+        if(t.includes('pdf')) return { bg: 'bg-danger', text: 'PDF' };
+        if(t.includes('doc')) return { bg: 'bg-primary', text: 'DOCX' };
+        if(t.includes('txt') || t.includes('text')) return { bg: 'bg-secondary', text: 'TXT' };
+        if(t.includes('jpg') || t.includes('png') || t.includes('image')) return { bg: 'bg-info', text: 'IMG' };
+        return { bg: 'bg-secondary', text: t.toUpperCase() };
+      }
+
+      // Load Recent Dumps
+      window.loadRecentDumps = async function() {
+        try {
+          const res = await fetch('/api/dumps/');
+          if(!res.ok) throw new Error('Failed to load');
+          const data = await res.json();
+          
+          const dumps = data.dumps || [];
+          dumpsTotalBadge.textContent = `${dumps.length} Total`;
+
+          if(dumps.length === 0) {
+            recentDumpsContainer.innerHTML = '<div class="text-center text-muted fs-7 py-3">No dumps in vault yet. Ingest some data!</div>';
+            return;
+          }
+
+          let itemsHtml = '<div class="list-group list-group-flush gap-2">';
+          dumps.forEach(dump => {
+            let tagsArray = [];
+            if (Array.isArray(dump.tags)) {
+              tagsArray = dump.tags;
+            } else if (typeof dump.tags === 'string' && dump.tags.trim()) {
+              try {
+                const parsed = JSON.parse(dump.tags);
+                tagsArray = Array.isArray(parsed) ? parsed : [dump.tags];
+              } catch(e) {
+                tagsArray = dump.tags.split(',').map(t => t.trim()).filter(Boolean);
+              }
+            }
+            
+            const tagsHtml = tagsArray.map(t => `<span class="badge badge-tag rounded-pill me-1" style="font-size: 0.65rem;">#${t}</span>`).join('');
+            const ccHtml = dump.course_code ? `<span class="badge bg-secondary bg-opacity-25 text-secondary border border-secondary border-opacity-25 rounded-pill me-1" style="font-size: 0.65rem;">${dump.course_code}</span>` : '';
+            
+            let pageHtml = '';
+            if (dump.page_count && dump.page_count > 1) {
+              pageHtml = `<span class="badge badge-tag rounded-pill me-1" style="font-size: 0.65rem;"><i class="fa-regular fa-copy me-1"></i>${dump.page_count} pages</span>`;
+            } else if (dump.page_number) {
+              pageHtml = `<span class="badge badge-tag rounded-pill me-1" style="font-size: 0.65rem;"><i class="fa-regular fa-file-lines me-1"></i>p.${dump.page_number}</span>`;
+            }
+
+            const badgeStyle = getBadgeStyle(dump.source_type);
+
+            itemsHtml += `
+              <div class="list-group-item glass-card glass-card-hover border-0 p-2.5 rounded-3 text-light">
+                <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                  <h6 class="mb-0 text-white fw-semibold text-truncate" style="font-size: 0.88rem; max-width: 210px;" title="${dump.source_name}">
+                    ${dump.source_name}
+                  </h6>
+                  <span class="badge ${badgeStyle.bg} bg-opacity-25 text-light border border-white border-opacity-10 rounded-pill" style="font-size: 0.65rem;">
+                    ${badgeStyle.text}
+                  </span>
+                </div>
+                <div class="d-flex align-items-center justify-content-between mt-2">
+                  <div class="d-flex flex-wrap gap-1 align-items-center">
+                    ${ccHtml}
+                    ${pageHtml}
+                    ${tagsHtml}
+                  </div>
+                  <small class="text-secondary" style="font-size: 0.7rem;"><i class="fa-regular fa-clock me-1"></i>${timeAgo(dump.created_at)}</small>
+                </div>
+              </div>
+            `;
+          });
+          itemsHtml += '</div>';
+          recentDumpsContainer.innerHTML = itemsHtml;
+        } catch(e) {
+          console.error('Error loading dumps:', e);
+          recentDumpsContainer.innerHTML = '<div class="text-center text-danger fs-7 py-3">Failed to load dumps.</div>';
+        }
+      };
+
+      // Setup File Drop Zones
+      function setupDropZone(zoneId, inputId, labelId, submitBtnId) {
+        const zone = document.getElementById(zoneId);
+        const input = document.getElementById(inputId);
+        const label = document.getElementById(labelId);
+        const btn = document.getElementById(submitBtnId);
+
+        zone.addEventListener('click', () => input.click());
+        zone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          zone.classList.add('dragover');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          zone.classList.remove('dragover');
+          if(e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            updateLabel();
+          }
+        });
+        input.addEventListener('change', updateLabel);
+
+        function updateLabel() {
+          if(input.files.length > 0) {
+            label.innerHTML = `<i class="fa-solid fa-check-circle me-1"></i> ${input.files[0].name}`;
+            label.style.display = 'block';
+            btn.disabled = false;
+          } else {
+            label.style.display = 'none';
+            btn.disabled = true;
+          }
+        }
+      }
+
+      setupDropZone('docDropZone', 'doc_file', 'doc_fileName', 'docSubmitBtn');
+      setupDropZone('imgDropZone', 'img_file', 'img_fileName', 'imgSubmitBtn');
+
+      // Form Submissions Helper
+      function toggleLoader(show, text="Processing...") {
+        const loader = document.getElementById('dumpLoader');
+        document.getElementById('dumpLoaderText').textContent = text;
+        loader.style.display = show ? 'flex' : 'none';
+      }
+
+      function getTagsArray(str) {
+        if(!str.trim()) return [];
+        return str.split(',').map(s => s.trim()).filter(Boolean);
+      }
+
+      // 1. Text Dump
+      document.getElementById('textDumpForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        toggleLoader(true, 'Saving text dump...');
+        
+        const data = {
+          raw_text: document.getElementById('text_rawText').value,
+          source_name: document.getElementById('text_sourceName').value,
+          course_code: document.getElementById('text_courseCode').value,
+          tags: getTagsArray(document.getElementById('text_tags').value)
+        };
+
+        try {
+          const res = await fetch('/api/dump/text/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+          });
+          if(res.ok) {
+            showToast('Text dump ingested into vault!');
+            e.target.reset();
+            loadRecentDumps();
+          } else {
+            showToast('Failed to save text dump', 'danger');
+          }
+        } catch(err) {
+          showToast('Network error', 'danger');
+        } finally {
+          toggleLoader(false);
+        }
+      });
+
+      // 2. Doc Dump
+      document.getElementById('docDumpForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        toggleLoader(true, 'Extracting document...');
+        
+        const formData = new FormData();
+        formData.append('file', document.getElementById('doc_file').files[0]);
+        formData.append('course_code', document.getElementById('doc_courseCode').value);
+        const tags = getTagsArray(document.getElementById('doc_tags').value);
+        tags.forEach(t => formData.append('tags', t));
+
+        try {
+          const res = await fetch('/api/dump/file/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: formData
+          });
+          const resultData = await res.json();
+          if(res.ok) {
+            showToast(resultData.message || 'Document ingested successfully');
+            e.target.reset();
+            document.getElementById('doc_fileName').style.display = 'none';
+            document.getElementById('docSubmitBtn').disabled = true;
+            loadRecentDumps();
+          } else {
+            showToast(resultData.message || 'Failed to process document', 'danger');
+          }
+        } catch(err) {
+          showToast('Network error', 'danger');
+        } finally {
+          toggleLoader(false);
+        }
+      });
+
+      // 3. Image Dump
+      document.getElementById('imgDumpForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        toggleLoader(true, 'Running OCR scan...');
+        
+        const formData = new FormData();
+        formData.append('file', document.getElementById('img_file').files[0]);
+        formData.append('course_code', document.getElementById('img_courseCode').value);
+        const tags = getTagsArray(document.getElementById('img_tags').value);
+        tags.forEach(t => formData.append('tags', t));
+
+        try {
+          const res = await fetch('/api/dump/image/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: formData
+          });
+          const resultData = await res.json();
+          if(res.ok) {
+            showToast('Image OCR scanned & saved!');
+            e.target.reset();
+            document.getElementById('img_fileName').style.display = 'none';
+            document.getElementById('imgSubmitBtn').disabled = true;
+            loadRecentDumps();
+          } else {
+            showToast(resultData.message || 'Failed to scan image', 'danger');
+          }
+        } catch(err) {
+          showToast('Network error', 'danger');
+        } finally {
+          toggleLoader(false);
+        }
+      });
+
+      // Ask Engine Pipeline
+      askForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const q = askInput.value.trim();
+        if(!q) return;
+
+        const askLoader = document.getElementById('askLoader');
+        askLoader.style.display = 'flex';
+        
+        // Clear placeholder on first search
+        if(resultsArea.querySelector('.fa-wand-magic-sparkles')) {
+          resultsArea.innerHTML = '';
+          resultsArea.appendChild(askLoader);
+        }
+
+        try {
+          const res = await fetch(`/api/ask/?question=${encodeURIComponent(q)}`);
+          const data = await res.json();
+          
+          let cardHtml = '';
+          
+          if(data.status === 'grounded') {
+            let sourcesHtml = '';
+            if(data.sources && data.sources.length > 0) {
+              const accId = 'acc_' + Date.now();
+              const sourceItems = data.sources.map((s, idx) => `
+                <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                  <div class="d-flex justify-content-between fw-semibold text-light mb-1 style-sm" style="font-size: 0.85rem;">
+                    <span><i class="fa-solid fa-file-text text-primary me-1"></i> Source ${idx + 1}: ${s.source_name} ${s.page_number ? `(Page ${s.page_number})` : ''}</span>
+                    <span class="text-success font-monospace" style="font-size: 0.75rem;">Relevance: ${s.score} pts</span>
+                  </div>
+                </div>
+              `).join('');
+
+              sourcesHtml = `
+                <div class="accordion mt-3" id="${accId}">
+                  <div class="accordion-item rounded-3 overflow-hidden">
+                    <h2 class="accordion-header">
+                      <button class="accordion-button collapsed py-2 px-3" type="button" data-bs-toggle="collapse" data-bs-target="#col_${accId}">
+                        <i class="fa-solid fa-quote-left text-primary me-2"></i> View Grounded Sources (${data.sources.length})
+                      </button>
+                    </h2>
+                    <div id="col_${accId}" class="accordion-collapse collapse" data-bs-parent="#${accId}">
+                      <div class="accordion-body text-secondary small pt-3">
+                        <div class="list-group list-group-flush gap-2">
+                          ${sourceItems}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }
+
+            cardHtml = `
+              <div class="card glass-card p-3 shadow-sm border-start border-success border-4">
+                <div class="card-body p-1">
+                  <div class="alert alert-success d-flex align-items-center justify-content-between mb-3 bg-success bg-opacity-15 border-success border-opacity-25 text-success py-2 px-3 rounded-3" role="alert">
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="fa-solid fa-circle-check fs-5"></i>
+                      <span class="fw-semibold">✅ Confirmed by multiple dumps</span>
+                    </div>
+                    <small class="text-success text-opacity-75 font-monospace" style="font-size: 0.75rem;">Latency: ${data.latency || 'Realtime'}</small>
+                  </div>
+                  <div class="text-secondary small mb-2">
+                    <i class="fa-solid fa-circle-question me-1 text-primary"></i> Query: <span class="text-light fs-7">"${q}"</span>
+                  </div>
+                  <div class="mb-3 text-light leading-relaxed">
+                    ${data.answer.replace(/\n/g, '<br>')}
+                  </div>
+                  ${sourcesHtml}
+                </div>
+              </div>
+            `;
+          } else if(data.status === 'conflict') {
+            cardHtml = `
+              <div class="card glass-card p-3 shadow-sm border-start border-warning border-4">
+                <div class="card-body p-1">
+                  <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3 bg-warning bg-opacity-15 border-warning border-opacity-25 text-warning py-2 px-3 rounded-3" role="alert">
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="fa-solid fa-triangle-exclamation fs-5"></i>
+                      <span class="fw-semibold">⚠️ Conflicting Dumps Detected</span>
+                    </div>
+                  </div>
+                  <div class="text-secondary small mb-2">
+                    <i class="fa-solid fa-circle-question me-1 text-primary"></i> Query: <span class="text-light">"${q}"</span>
+                  </div>
+                  <div class="p-3 rounded-3 mb-3 bg-dark bg-opacity-50 border border-warning border-opacity-25 text-light">
+                    ${data.answer.replace(/\n/g, '<br>')}
+                  </div>
+                </div>
+              </div>
+            `;
+          } else if(data.status === 'refusal') {
+            cardHtml = `
+              <div class="card glass-card p-3 shadow-sm border-start border-danger border-4">
+                <div class="card-body p-1">
+                  <div class="alert alert-danger d-flex align-items-center justify-content-between mb-2 bg-danger bg-opacity-15 border-danger border-opacity-25 text-danger py-2 px-3 rounded-3" role="alert">
+                    <div class="d-flex align-items-center gap-2">
+                      <i class="fa-solid fa-circle-xmark fs-5"></i>
+                      <span class="fw-semibold">${data.answer}</span>
+                    </div>
+                  </div>
+                  <div class="text-secondary small mb-2">
+                    <i class="fa-solid fa-circle-question me-1 text-primary"></i> Query: <span class="text-light">"${q}"</span>
+                  </div>
+                  <p class="text-secondary mb-0 style-sm" style="font-size: 0.85rem;">
+                    No matching vectors or indexed context found across active dumps in your vault. Hallucination guardrails prevented an artificial response.
+                  </p>
+                </div>
+              </div>
+            `;
+          } else if(data.status === 'chatter_guard' || data.status === 'metadata') {
+            cardHtml = `
+              <div class="card glass-card p-3 shadow-sm border-start border-primary border-4">
+                <div class="card-body p-1">
+                  <div class="text-secondary small mb-2">
+                    <i class="fa-solid fa-circle-question me-1 text-primary"></i> Query: <span class="text-light">"${q}"</span>
+                  </div>
+                  <div class="text-light">${data.answer.replace(/\n/g, '<br>')}</div>
+                </div>
+              </div>
+            `;
+          } else {
+            cardHtml = `
+              <div class="card glass-card p-3 shadow-sm border-start border-danger border-4">
+                <div class="card-body p-1 text-danger">
+                  <i class="fa-solid fa-circle-xmark me-2"></i> ${data.answer || 'An error occurred'}
+                </div>
+              </div>
+            `;
+          }
+
+          resultsArea.insertAdjacentHTML('beforeend', cardHtml);
+          askInput.value = '';
+        } catch(err) {
+          const errHtml = `
+            <div class="card glass-card p-3 shadow-sm border-start border-danger border-4">
+              <div class="card-body p-1 text-danger">
+                <i class="fa-solid fa-circle-xmark me-2"></i> Network error connecting to Ask Engine.
+              </div>
+            </div>
+          `;
+          resultsArea.insertAdjacentHTML('beforeend', errHtml);
+        } finally {
+          askLoader.style.display = 'none';
+          resultsArea.scrollTop = resultsArea.scrollHeight;
+        }
+      });
+
+      // Reset Button
+      resetBtn.addEventListener('click', () => {
+        resultsArea.innerHTML = `
+          <div class="text-center text-secondary my-auto py-5">
+            <i class="fa-solid fa-wand-magic-sparkles fs-1 mb-3 text-primary opacity-50"></i>
+            <h5 class="text-white">Ready to Query Vault</h5>
+            <p class="small text-muted" style="max-width: 480px; margin: 0 auto;">Ask any campus question below. The engine searches retrieved dumps, verifies corroboration, and returns grounded answers with zero external data leaks.</p>
+          </div>
+          <div class="loader-overlay" id="askLoader">
+            <div class="text-center">
+              <div class="spinner-grow text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+              <div class="mt-3 text-primary fw-medium">Searching Vault & Corroborating...</div>
+            </div>
+          </div>
+        `;
+      });
+
+      // Gemma Status Checker
+      const gemmaStatusEl = document.getElementById('gemmaStatus');
+      const gemmaStatusText = document.getElementById('gemmaStatusText');
+      const gemmaStatusDetail = document.getElementById('gemmaStatusDetail');
+
+      async function checkGemmaStatus() {
+        gemmaStatusEl.className = 'gemma-status checking';
+        gemmaStatusText.textContent = 'Checking Ollama...';
+        gemmaStatusDetail.textContent = '';
+
+        try {
+          const res = await fetch('/api/gemma/status/');
+          const data = await res.json();
+
+          if (data.connected && data.gemma_loaded) {
+            gemmaStatusEl.className = 'gemma-status connected';
+            gemmaStatusText.innerHTML = '<i class="fa-solid fa-plug-circle-check me-1"></i>Gemma 4 Connected';
+            const details = [];
+            if (data.parameter_size) details.push(data.parameter_size);
+            if (data.quantization) details.push(data.quantization);
+            if (data.size_gb) details.push(data.size_gb + ' GB');
+            gemmaStatusDetail.textContent = details.join(' · ');
+          } else if (data.connected && !data.gemma_loaded) {
+            gemmaStatusEl.className = 'gemma-status disconnected';
+            gemmaStatusText.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i>Gemma 4 Not Found';
+            gemmaStatusDetail.textContent = 'Run: ollama pull gemma4';
+          } else {
+            gemmaStatusEl.className = 'gemma-status disconnected';
+            gemmaStatusText.innerHTML = '<i class="fa-solid fa-plug-circle-xmark me-1"></i>Ollama Offline';
+            gemmaStatusDetail.textContent = data.error || '';
+          }
+        } catch (err) {
+          gemmaStatusEl.className = 'gemma-status disconnected';
+          gemmaStatusText.innerHTML = '<i class="fa-solid fa-plug-circle-xmark me-1"></i>Ollama Offline';
+          gemmaStatusDetail.textContent = 'Cannot reach server';
+        }
+      }
+
+      // Check on load and every 30s
+      checkGemmaStatus();
+      setInterval(checkGemmaStatus, 30000);
+
+      // Initial load
+      loadRecentDumps();
+    });
+  </script>
+</body>
+</html>
